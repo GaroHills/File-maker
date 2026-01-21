@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All-in-One Media Tool</title>
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --sidebar-bg: #1e293b;
+            --sidebar-text: #f8fafc;
+            --content-bg: #ffffff;
+            --text-main: #334155;
+            --border-color: #e2e8f0;
+            --header-height: 60px;
+            --sidebar-width: 260px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f1f5f9;
+            display: block; 
+            min-height: 100vh;
+        }
+
+        /* --- Top Header / Toolbar --- */
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--header-height);
+            background-color: #ffffff;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            z-index: 50;
+            box-sizing: border-box;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-main);
+            margin-right: 15px;
+            padding: 5px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu-btn:hover { background-color: #f1f5f9; }
+
+        .app-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--text-main);
+            flex: 1; /* Push language selector to right */
+        }
+
+        /* Language Select Style */
+        .lang-select {
+            padding: 5px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: #f8fafc;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            width: auto;
+            cursor: pointer;
+        }
+
+        /* --- Sidebar Drawer --- */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.2);
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .brand {
+            padding: 20px;
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-bottom: 1px solid #334155;
+            text-transform: uppercase;
+            box-sizing: border-box;
+            background: rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+
+        .category-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .category-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #334155;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .category-item:hover { background-color: #334155; padding-left: 25px; }
+        .category-item.active { background-color: var(--primary); font-weight: 600; }
+
+        /* --- Overlay (Backdrop) --- */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 90;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* --- Main Content --- */
+        .main-content {
+            padding: 20px;
+            margin-top: var(--header-height);
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: transparent;
+        }
+
+        .page-view { 
+            display: none; 
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            animation: fadeIn 0.3s;
+        }
+        .page-view.active { display: block; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+
+        h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--text-main); margin-top: 0; }
+
+        /* Form Controls */
+        .control-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-main); }
+        
+        input, select {
+            width: 100%; padding: 10px;
+            border: 1px solid var(--border-color); border-radius: 4px;
+            font-size: 1rem; box-sizing: border-box;
+        }
+        input[type="file"] { border: 2px dashed #cbd5e1; cursor: pointer; background: #f8fafc; }
+        input[type="color"] { height: 45px; padding: 2px; cursor: pointer; }
+
+        .row { display: flex; gap: 15px; flex-wrap: wrap; }
+        .row > * { flex: 1; min-width: 200px; }
+
+        button.action-btn {
+            background-color: var(--primary); color: white; border: none;
+            padding: 12px 25px; font-size: 1rem; font-weight: bold;
+            cursor: pointer; border-radius: 4px; width: 100%;
+            transition: 0.2s; margin-top: 10px;
+        }
+        button.action-btn:hover { background-color: var(--primary-hover); }
+        button.action-btn.secondary { background-color: #64748b; }
+        button.action-btn.success { background-color: #16a34a; }
+
+        /* Preset Buttons */
+        .preset-container {
+            display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+        }
+        .preset-btn {
+            padding: 8px 15px;
+            background: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #334155;
+            transition: 0.2s;
+        }
+        .preset-btn:hover { background: #cbd5e1; }
+        .preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Merge Tool Specific Styles */
+        .image-list-container {
+            border: 1px solid var(--border-color);
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .merge-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+        
+        .merge-item img {
+            width: 50px; height: 50px; object-fit: cover;
+            border-radius: 4px; margin-right: 15px;
+            border: 1px solid #ccc;
+        }
+        
+        .merge-item .info { flex: 1; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        .merge-controls { display: flex; gap: 5px; }
+        .btn-mini {
+            padding: 5px 10px; border: none; cursor: pointer; border-radius: 3px;
+            font-size: 0.8rem; font-weight: bold;
+        }
+        .btn-up { background: #e2e8f0; color: #333; }
+        .btn-del { background: #fee2e2; color: #991b1b; }
+        .btn-mini:hover { opacity: 0.8; }
+
+        .preview-canvas-container {
+            margin-top: 20px;
+            text-align: center;
+            background: repeating-conic-gradient(#f1f5f9 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            overflow: auto;
+            max-height: 500px;
+        }
+        canvas { max-width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        /* Status Bar (Old, kept for fallback) */
+        #status-bar {
+            position: fixed; bottom: 20px; right: 20px;
+            padding: 15px 25px; border-radius: 4px;
+            color: white; font-weight: bold; display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000;
+        }
+        .status-proc { background: #3b82f6; }
+        .status-ok { background: #22c55e; }
+        .status-err { background: #ef4444; }
+
+        /* --- NEW: Custom Dialog & Progress Bar Styles --- */
+        .modal-overlay-custom {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: 0.3s;
+        }
+        .modal-overlay-custom.active { opacity: 1; visibility: visible; }
+        
+        .modal-box {
+            background: white; width: 90%; max-width: 400px;
+            border-radius: 8px; padding: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center; transform: scale(0.9); transition: 0.3s;
+        }
+        .modal-overlay-custom.active .modal-box { transform: scale(1); }
+
+        .modal-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 10px; color: #334155; }
+        .modal-msg { color: #64748b; margin-bottom: 20px; font-size: 1rem; line-height: 1.5; }
+        
+        .modal-btn {
+            background: var(--primary); color: white; border: none;
+            padding: 10px 25px; border-radius: 4px; cursor: pointer;
+            font-size: 1rem; transition: 0.2s;
+        }
+        .modal-btn:hover { background: var(--primary-hover); }
+
+        /* Progress Bar Specifics */
+        .progress-track {
+            width: 100%; height: 10px; background: #e2e8f0;
+            border-radius: 5px; margin: 15px 0; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; width: 0%; background: var(--primary);
+            transition: width 0.3s ease;
+        }
+        .progress-text { font-weight: bold; color: var(--primary); font-size: 0.9rem; }
+
+        /* --- PDF to Image Result Styles --- */
+        .p2i-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .p2i-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        /* Hidden by default in new design, shown in modal */
+        .p2i-item img { display: none; }
+        
+        .p2i-btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 5px;
+        }
+        .p2i-btn.view-btn { background-color: #64748b; margin-bottom: 5px; }
+        .p2i-btn:hover { opacity: 0.9; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Top Toolbar -->
+    <header class="top-bar">
+        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+        <div class="app-title" data-lang-key="app_title">Media Tool Suite</div>
+        
+        <!-- Language Selector -->
+        <select id="lang_select" class="lang-select" onchange="changeLanguage(this.value)">
+            <option value="en">English</option>
+            <option value="hi">Hindi (हिंदी)</option>
+            <option value="garo">Garo (A·chik)</option>
+        </select>
+    </header>
+
+    <!-- Sidebar Drawer -->
+    <nav class="sidebar" id="sidebar">
+        <div class="brand">
+            <span data-lang-key="app_title">Media Tools</span>
+            <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
+        </div>
+        <ul class="category-list">
+            <li class="category-item active" onclick="showPage('home')" data-lang-key="nav_home">Home</li>
+            <li class="category-item" onclick="showPage('reduce-size')" data-lang-key="nav_reduce">Reduce Image Size</li>
+            <li class="category-item" onclick="showPage('increase-size')" data-lang-key="nav_increase">Increase Image Size</li>
+            <li class="category-item" onclick="showPage('merge-img')" data-lang-key="nav_merge">Merge Images</li>
+            <li class="category-item" onclick="showPage('img-converter')" data-lang-key="nav_converter">Image Converter</li>
+            <li class="category-item" onclick="showPage('img-to-pdf')" data-lang-key="nav_i2p">Image to PDF</li>
+            <li class="category-item" onclick="showPage('pdf-to-img')" data-lang-key="nav_p2i">PDF to Image</li>
+            <li class="category-item" onclick="showPage('pdf-size')" data-lang-key="nav_size">PDF Size Manager</li>
+        </ul>
+    </nav>
+
+    <!-- Overlay backdrop -->
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+        <!-- 0. Home -->
+        <div id="home" class="page-view active">
+            <h2 data-lang-key="welcome_title">Welcome</h2>
+            <p data-lang-key="welcome_text">Click the menu icon (☰) in the top left to access tools.</p>
+            <ul>
+                <li data-lang-key="welcome_desc_new"><strong>Reduce Image Size:</strong> Compress images to 20KB, 50KB, 100KB, etc.</li>
+                <li data-lang-key="welcome_desc_inc"><strong>Increase Image Size:</strong> Increase file size (Padding) without quality loss.</li>
+                <li data-lang-key="welcome_desc_1"><strong>Merge Images:</strong> Join multiple images with borders and custom layout.</li>
+                <li data-lang-key="welcome_desc_2"><strong>Image Converter:</strong> JPG, PNG, WebP conversion.</li>
+                <li data-lang-key="welcome_desc_3"><strong>PDF Tools:</strong> Convert, Extract, and Resize PDFs.</li>
+            </ul>
+        </div>
+
+        <!-- 1. REDUCE IMAGE SIZE -->
+        <div id="reduce-size" class="page-view">
+            <h2 data-lang-key="reduce_title">Reduce Image Size (Compress)</h2>
+            
+            <div class="control-group">
+                <label data-lang-key="label_select_img">Select Image</label>
+                <input type="file" id="red_file" accept="image/*" onchange="updateReduceFileInfo(this)">
+                <div id="red_file_info" style="margin-top:5px; color:#2563eb; font-weight:600; font-size:0.9rem;"></div>
+            </div>
+
+            <div class="control-group">
+                <label data-lang-key="label_presets">Target Size (Presets)</label>
+                <div class="preset-container">
+                    <button class="preset-btn" onclick="setPreset(20)">20 KB</button>
+                    <button class="preset-btn" onclick="setPreset(50)">50 KB</button>
+                    <button class="preset-btn" onclick="setPreset(100)">100 KB</button>
+                    <button class="preset-btn" onclick="setPreset(200)">200 KB</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label data-lang-key="label_manual_kb">Or Enter Manual Size (KB)</label>
+                <input type="number" id="red_val" placeholder="e.g. 150" min="1">
+            </div>
+
+            <button class="action-btn success" onclick="runReduce()" data-lang-key="btn_compress_dl">Compress & Download</button>
+        </div>
+
+        <!-- 2. INCREASE IMAGE SIZE -->
+        <div id="increase-size" class="page-view">
+            <h2 data-lang-key="increase_title">Increase Image Size</h2>
+            
+            <div class="control-group">
+                <label data-lang-key="label_select_img">Select Image</label>
+                <input type="file" id="inc_file" accept="image/*" onchange="updateIncreaseFileInfo(this)">
+                <div id="inc_file_info" style="margin-top:5px; color:#2563eb; font-weight:600; font-size:0.9rem;"></div>
+            </div>
+
+            <div class="control-group">
+                <label data-lang-key="label_presets">Target Size (Presets)</label>
+                <div class="preset-container">
+                    <button class="preset-btn" onclick="setIncPreset(100, 'KB')">100 KB</button>
+                    <button class="preset-btn" onclick="setIncPreset(500, 'KB')">500 KB</button>
+                    <button class="preset-btn" onclick="setIncPreset(1, 'MB')">1 MB</button>
+                    <button class="preset-btn" onclick="setIncPreset(2, 'MB')">2 MB</button>
+                    <button class="preset-btn" onclick="setIncPreset(5, 'MB')">5 MB</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label data-lang-key="label_manual_size">Or Enter Target Size</label>
+                <div class="row">
+                    <input type="number" id="inc_val" placeholder="e.g. 500" min="1">
+                    <select id="inc_unit" style="flex:0.4">
+                        <option value="KB">KB</option>
+                        <option value="MB">MB</option>
+                    </select>
+                </div>
+                <small style="color:#666; font-size:0.85rem; display:block; margin-top:5px;" data-lang-key="inc_hint">
+                    This adds invisible data (padding) to increase file size without affecting image quality.
+                </small>
+            </div>
+
+            <button class="action-btn" onclick="runIncrease()" data-lang-key="btn_increase_dl">Increase & Download</button>
+        </div>
+
+        <!-- 3. MERGE IMAGES -->
+        <div id="merge-img" class="page-view">
+            <h2 data-lang-key="merge_title">Merge / Join Images</h2>
+            
+            <div class="control-group">
+                <label data-lang-key="label_add_img">1. Add Images</label>
+                <input type="file" id="merge_input" accept="image/*" multiple onchange="handleMergeFiles(this)">
+                <small style="color:#666" data-lang-key="merge_hint">You can add more images later. Use the list below to reorder.</small>
+            </div>
+
+            <div class="control-group">
+                <label data-lang-key="label_organize">2. Organize Images (Drag or use buttons)</label>
+                <div id="merge_list_ui" class="image-list-container">
+                    <div style="padding:20px; text-align:center; color:#999;" data-lang-key="no_img_added">No images added yet.</div>
+                </div>
+                <button class="action-btn secondary" onclick="clearMergeList()" style="width:auto; padding: 8px 15px;" data-lang-key="btn_clear">Clear All</button>
+            </div>
+
+            <div class="control-group">
+                <label data-lang-key="label_merge_settings">3. Merge Settings</label>
+                <div class="row">
+                    <div>
+                        <label data-lang-key="label_direction">Direction</label>
+                        <select id="merge_dir">
+                            <option value="vertical" data-lang-key="opt_vertical">Vertical (Top to Bottom)</option>
+                            <option value="horizontal" data-lang-key="opt_horizontal">Horizontal (Left to Right)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label data-lang-key="label_border">Border Size (px)</label>
+                        <input type="number" id="merge_border" value="0" min="0">
+                    </div>
+                    <div>
+                        <label data-lang-key="label_color">Border Color</label>
+                        <input type="color" id="merge_color" value="#ffffff">
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button class="action-btn" onclick="generateMergePreview()" data-lang-key="btn_preview">Review / Generate Preview</button>
+            </div>
+
+            <div class="control-group" id="merge_preview_section" style="display:none;">
+                <label data-lang-key="label_review">4. Review & Download</label>
+                
+                <!-- Hidden Canvas -->
+                <div class="preview-canvas-container" style="display:none;">
+                    <canvas id="merge_canvas"></canvas>
+                </div>
+                
+                <!-- View Button -->
+                <button class="action-btn secondary" onclick="openMergePreview()" style="margin-bottom:10px;">View Generated Image</button>
+                
+                <button class="action-btn success" onclick="downloadMerged()" data-lang-key="btn_download_merge">Download Final Image</button>
+            </div>
+        </div>
+
+        <!-- 4. Image Converter -->
+        <div id="img-converter" class="page-view">
+            <h2 data-lang-key="conv_title">Image Converter</h2>
+            
+            <div class="control-group">
+                <label data-lang-key="label_select_img">Select Image (Supports all standard formats)</label>
+                <input type="file" id="conv_file" accept="image/*" onchange="updateConvFileInfo(this)">
+                <div id="conv_file_info" style="margin-top:5px; color:#2563eb; font-weight:600; font-size:0.9rem;"></div>
+            </div>
+
+            <div class="control-group">
+                <label data-lang-key="label_out_fmt">Output Format</label>
+                <select id="conv_fmt">
+                    <option value="image/jpeg">JPG / JPEG</option>
+                    <option value="image/png">PNG</option>
+                    <option value="image/webp">WebP</option>
+                    <option value="image/bmp">BMP</option>
+                    <option value="image/gif">GIF (Static)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label data-lang-key="label_size_mode">Size Management Mode</label>
+                <select id="conv_mode">
+                    <option value="compress" data-lang-key="opt_compress">Compress (Decrease Size)</option>
+                    <option value="increase" data-lang-key="opt_increase">Padding (Increase Size)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label data-lang-key="label_target_size">Target File Size (Optional)</label>
+                <div class="row">
+                    <input type="number" id="conv_target_val" placeholder="Ex: 500" min="1">
+                    <select id="conv_target_unit" style="flex:0.4">
+                        <option value="KB">KB</option>
+                        <option value="MB">MB</option>
+                    </select>
+                </div>
+                <small style="color:#666; font-size:0.85rem; display:block; margin-top:5px;" data-lang-key="conv_hint">
+                    <strong>Compress:</strong> Tries to reduce quality. <strong>Increase:</strong> Adds invisible data.
+                </small>
+            </div>
+
+            <button class="action-btn" onclick="runConvert()" data-lang-key="btn_convert_dl">Convert & Download</button>
+        </div>
+
+        <!-- 5. Image to PDF (UPDATED) -->
+        <div id="img-to-pdf" class="page-view">
+            <h2 data-lang-key="i2p_title">Image to PDF</h2>
+            
+            <div class="control-group">
+                <label data-lang-key="label_select_imgs">Select Images</label>
+                <input type="file" id="i2p_files" accept="image/*" multiple onchange="handleI2PFiles(this)">
+                <small style="color:#666; display:block; margin-top:5px;">You can select multiple images. They will be added to the list below.</small>
+            </div>
+
+            <div class="control-group">
+                <div id="i2p_list_ui" class="image-list-container">
+                    <div style="padding:20px; text-align:center; color:#999;" data-lang-key="no_img_added">No images added yet.</div>
+                </div>
+                <button class="action-btn secondary" onclick="clearI2PList()" style="width:auto; padding: 8px 15px;" data-lang-key="btn_clear">Clear All</button>
+            </div>
+
+            <button class="action-btn" onclick="runI2P()" data-lang-key="btn_gen_pdf">Generate PDF</button>
+
+            <!-- PDF Result Container (Hidden by default) -->
+            <div id="i2p_result" style="display:none; text-align:center; margin-top:20px; padding:20px; background:#f1f5f9; border-radius:8px; border:1px solid #cbd5e1;">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+
+        <!-- 6. PDF to Image (UPDATED) -->
+        <div id="pdf-to-img" class="page-view">
+            <h2 data-lang-key="p2i_title">PDF to Image</h2>
+            <div class="control-group">
+                <label data-lang-key="label_select_pdf">Select PDF</label>
+                <input type="file" id="p2i_file" accept="application/pdf">
+            </div>
+            <div class="control-group">
+                <label data-lang-key="label_fmt">Format</label>
+                <select id="p2i_fmt">
+                    <option value="image/jpeg">JPG</option>
+                    <option value="image/png">PNG</option>
+                    <option value="image/webp">WebP</option>
+                </select>
+            </div>
+            <button class="action-btn" onclick="runP2I()" data-lang-key="btn_extract">Convert PDF to Image</button>
+            
+            <!-- Container for results -->
+            <div id="p2i_results" class="p2i-grid"></div>
+        </div>
+
+        <!-- 7. PDF Size (UPDATED) -->
+        <div id="pdf-size" class="page-view">
+            <h2 data-lang-key="size_title">PDF Size Manager</h2>
+            <div class="control-group">
+                <label data-lang-key="label_select_pdf">Select PDF</label>
+                <input type="file" id="size_file" accept="application/pdf" onchange="updatePdfSizeInfo(this)">
+                <div id="size_file_info" style="margin-top:5px; color:#2563eb; font-weight:600; font-size:0.9rem;"></div>
+            </div>
+            <div class="control-group">
+                <label data-lang-key="label_mode">Mode</label>
+                <select id="size_mode">
+                    <option value="compress" data-lang-key="opt_compress">Compress (Decrease)</option>
+                    <option value="increase" data-lang-key="opt_increase">Padding (Increase)</option>
+                </select>
+            </div>
+            <div class="row">
+                <input type="number" id="size_val" placeholder="Size" min="1">
+                <select id="size_unit" style="flex:0.4"><option>KB</option><option>MB</option></select>
+            </div>
+            <button class="action-btn" onclick="runPdfSize()" data-lang-key="btn_process">Process</button>
+
+            <!-- NEW: PDF Size Result Container -->
+            <div id="size_result" style="display:none; text-align:center; margin-top:20px; padding:20px; background:#f1f5f9; border-radius:8px; border:1px solid #cbd5e1;">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+
+    </main>
+
+    <div id="status-bar"></div>
+
+    <!-- NEW: Custom Alert Dialog -->
+    <div id="alert_modal" class="modal-overlay-custom">
+        <div class="modal-box">
+            <div class="modal-title" id="alert_title">Alert</div>
+            <div class="modal-msg" id="alert_msg">Message here...</div>
+            <button class="modal-btn" onclick="closeAlert()">OK</button>
+        </div>
+    </div>
+
+    <!-- NEW: Progress Bar Dialog -->
+    <div id="progress_modal" class="modal-overlay-custom">
+        <div class="modal-box">
+            <div class="modal-title" id="progress_title">Processing...</div>
+            <div class="progress-track">
+                <div id="progress_fill" class="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progress_text">0%</div>
+        </div>
+    </div>
+
+    <!-- NEW: Image Preview Modal -->
+    <div id="preview_modal" class="modal-overlay-custom" onclick="closePreview(event)">
+        <div class="modal-box" style="background:transparent; box-shadow:none; width:auto; max-width:95%;">
+            <img id="preview_img_target" src="" style="max-width:100%; max-height:80vh; border-radius:4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="text-align:center; margin-top:15px;">
+                <button class="modal-btn" style="background:white; color:#333;" onclick="closePreview()">Close Preview</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        //  LANGUAGE / TRANSLATION LOGIC
+        // ==========================================
+        const translations = {
+            en: {
+                app_title: "Media Tool Suite",
+                nav_home: "Home",
+                nav_reduce: "Reduce Image Size",
+                nav_increase: "Increase Image Size",
+                nav_merge: "Merge Images",
+                nav_converter: "Image Converter",
+                nav_i2p: "Image to PDF",
+                nav_p2i: "PDF to Image",
+                nav_size: "PDF Size Manager",
+                welcome_title: "Welcome",
+                welcome_text: "Click the menu icon (☰) in the top left to access tools.",
+                welcome_desc_new: "Reduce Image Size: Compress images to 20KB, 50KB, 100KB, etc.",
+                welcome_desc_inc: "Increase Image Size: Increase file size (Padding) without quality loss.",
+                welcome_desc_1: "Merge Images: Join multiple images with borders and custom layout.",
+                welcome_desc_2: "Image Converter: JPG, PNG, WebP conversion.",
+                welcome_desc_3: "PDF Tools: Convert, Extract, and Resize PDFs.",
+                
+                // Reduce Tool
+                reduce_title: "Reduce Image Size in KB",
+                label_presets: "Target Size (Presets)",
+                label_manual_kb: "Or Enter Manual Size (KB)",
+                btn_compress_dl: "Compress & Download",
+
+                // Increase Tool
+                increase_title: "Increase Image Size (Padding)",
+                label_manual_size: "Or Enter Target Size",
+                btn_increase_dl: "Increase & Download",
+                inc_hint: "This adds invisible data (padding) to increase file size without affecting image quality.",
+
+                // Merge Tool
+                merge_title: "Merge / Join Images",
+                label_add_img: "1. Add Images",
+                merge_hint: "You can add more images later. Use the list below to reorder.",
+                label_organize: "2. Organize Images (Drag or use buttons)",
+                no_img_added: "No images added yet.",
+                btn_clear: "Clear All",
+                label_merge_settings: "3. Merge Settings",
+                label_direction: "Direction",
+                opt_vertical: "Vertical (Top to Bottom)",
+                opt_horizontal: "Horizontal (Left to Right)",
+                label_border: "Border Size (px)",
+                label_color: "Border Color",
+                btn_preview: "Review / Generate Preview",
+                label_review: "4. Review & Download",
+                btn_download_merge: "Download Final Image",
+                
+                // Converter
+                conv_title: "Image Converter",
+                label_select_img: "Select Image (Supports all standard formats)",
+                label_out_fmt: "Output Format",
+                label_size_mode: "Size Management Mode",
+                opt_compress: "Compress (Decrease Size)",
+                opt_increase: "Padding (Increase Size)",
+                label_target_size: "Target File Size (Optional)",
+                conv_hint: "Compress: Tries to reduce quality. Increase: Adds invisible data.",
+                btn_convert_dl: "Convert & Download",
+                
+                // Other
+                i2p_title: "Image to PDF",
+                label_select_imgs: "Select Images",
+                btn_gen_pdf: "Generate PDF",
+                p2i_title: "PDF to Image",
+                label_select_pdf: "Select PDF",
+                label_fmt: "Format",
+                btn_extract: "Convert PDF to Image",
+                size_title: "PDF Size Manager",
+                label_mode: "Mode",
+                btn_process: "Process"
+            },
+            hi: {
+                app_title: "मीडिया टूल किट",
+                nav_home: "होम",
+                nav_reduce: "इमेज का साइज कम करें",
+                nav_increase: "इमेज का साइज बढ़ाएं",
+                nav_merge: "तस्वीरें जोड़ें (Merge)",
+                nav_converter: "इमेज कन्वर्टर",
+                nav_i2p: "इमेज से PDF",
+                nav_p2i: "PDF से इमेज",
+                nav_size: "PDF साइज मैनेजर",
+                welcome_title: "स्वागत है",
+                welcome_text: "टूल्स का उपयोग करने के लिए ऊपर बाईं ओर मेनू आइकन (☰) पर क्लिक करें।",
+                welcome_desc_new: "इमेज का साइज कम करें: 20KB, 50KB, आदि में कंप्रेस करें।",
+                welcome_desc_inc: "इमेज का साइज बढ़ाएं: गुणवत्ता खोए बिना फाइल साइज बढ़ाएं।",
+                welcome_desc_1: "तस्वीरें जोड़ें: कई छवियों को बॉर्डर और लेआउट के साथ जोड़ें।",
+                welcome_desc_2: "इमेज कन्वर्टर: JPG, PNG, WebP में बदलें।",
+                welcome_desc_3: "PDF टूल्स: PDF को कन्वर्ट, एक्सट्रैक्ट और रिसाइज करें।",
+                
+                reduce_title: "इमेज का साइज कम करें (KB)",
+                label_presets: "लक्ष्य आकार (Presets)",
+                label_manual_kb: "या मैनुअल साइज (KB) डालें",
+                btn_compress_dl: "कंप्रेस और डाउनलोड करें",
+
+                increase_title: "इमेज का साइज बढ़ाएं (Padding)",
+                label_manual_size: "या लक्ष्य आकार डालें",
+                btn_increase_dl: "साइज बढ़ाएं और डाउनलोड करें",
+                inc_hint: "यह इमेज की गुणवत्ता को प्रभावित किए बिना फाइल साइज बढ़ाने के लिए अदृश्य डेटा जोड़ता है।",
+
+                merge_title: "तस्वीरें जोड़ें / मिलाएँ",
+                label_add_img: "1. तस्वीरें चुनें",
+                merge_hint: "आप बाद में और तस्वीरें जोड़ सकते हैं। क्रम बदलने के लिए नीचे दी गई सूची का उपयोग करें।",
+                label_organize: "2. तस्वीरें व्यवस्थित करें",
+                no_img_added: "अभी तक कोई तस्वीर नहीं जोड़ी गई।",
+                btn_clear: "सभी हटाएं",
+                label_merge_settings: "3. सेटिंग्स",
+                label_direction: "दिशा",
+                opt_vertical: "लंबवत (ऊपर से नीचे)",
+                opt_horizontal: "क्षैतिज (बाएं से दाएं)",
+                label_border: "बॉर्डर साइज (px)",
+                label_color: "बॉर्डर का रंग",
+                btn_preview: "पूर्वावलोकन (Preview) देखें",
+                label_review: "4. समीक्षा और डाउनलोड",
+                btn_download_merge: "अंतिम इमेज डाउनलोड करें",
+                
+                conv_title: "इमेज कन्वर्टर",
+                label_select_img: "इमेज चुनें (सभी फॉर्मेट समर्थित)",
+                label_out_fmt: "आउटपुट फॉर्मेट",
+                label_size_mode: "साइज मोड",
+                opt_compress: "कम्प्रेस (साइज घटाएं)",
+                opt_increase: "पैडिंग (साइज बढ़ाएं)",
+                label_target_size: "लक्ष्य फ़ाइल का आकार (वैकल्पिक)",
+                conv_hint: "कम्प्रेस: गुणवत्ता कम करता है। पैडिंग: साइज बढ़ाता है।",
+                btn_convert_dl: "कन्वर्ट और डाउनलोड",
+                
+                i2p_title: "इमेज से PDF",
+                label_select_imgs: "तस्वीरें चुनें",
+                btn_gen_pdf: "PDF बनाएँ",
+                p2i_title: "PDF से इमेज",
+                label_select_pdf: "PDF चुनें",
+                label_fmt: "फॉर्मेट",
+                btn_extract: "PDF को इमेज में बदलें",
+                size_title: "PDF साइज मैनेजर",
+                label_mode: "मोड",
+                btn_process: "प्रक्रिया शुरू करें"
+            },
+            garo: {
+                app_title: "Media Tools",
+                nav_home: "Nok (Home)",
+                nav_reduce: "Noksani Sizeko Komiatbo",
+                nav_increase: "Noksani Sizeko Bariatbo",
+                nav_merge: "Noksarangko Nangrimatbo",
+                nav_converter: "Noksa Dingtangatgipa",
+                nav_i2p: "Noksako PDF taribo",
+                nav_p2i: "PDFko Noksa taribo",
+                nav_size: "PDF ko dal•a chona dake taribo",
+                welcome_title: "Rimchakso",
+                welcome_text: "Tools-rangko man·na kosak jakasi-o donggipa menu (☰) ko click ka·bo.",
+                welcome_desc_new: "Noksani Sizeko Komiatbo: 20KB, 50KB, 100KB ona komiatbo.",
+                welcome_desc_inc: "Noksani Sizeko Bariatbo: Noksani gun nosto ong•gija sizeko bariatbo.",
+                welcome_desc_1: "Noksarangko Nangrimatbo: Bang·a noksarangko ge•sa dake taribo.",
+                welcome_desc_2: "Noksa Dingtangatgipa: JPG, PNG, WebP ona dingtangatbo.",
+                welcome_desc_3: "PDF Tools: PDF ko dingtangatbo aro dal·a chona-ona taridapbo.",
+                
+                reduce_title: "Noksani Size-ko Komiatbo (KB)",
+                label_presets: "Target Size (Presets)",
+                label_manual_kb: "Nang•ni nangnika gita sebo (KB)",
+                btn_compress_dl: "Komiatbo & Ra·onbo",
+
+                increase_title: "Noksani Size-ko Bariatbo (Padding)",
+                label_manual_size: "Ba nangnikan gita sizeko sebo",
+                btn_increase_dl: "Bariatbo & Ra·onbo",
+                inc_hint: "Ia tool-chi noksani gun komijawa, indiba size barigen.",
+
+                merge_title: "Noksarangko Nangrimatbo",
+                label_add_img: "1. Noksarangko Ra·gatbo",
+                merge_hint: "Na·a ja·manoba noksarangko on·dapna man·gen.",
+                label_organize: "2. Noksarangko Taribo",
+                no_img_added: "Da·o dipet maming noksa dongja.",
+                btn_clear: "Gimikko Galbo",
+                label_merge_settings: "3. Noksa ko apsanatgipa Niam",
+                label_direction: "Direction",
+                opt_vertical: "Kosakoni Ka·maona (Vertical)",
+                opt_horizontal: "Jakasioni Jakraona (Horizontal)",
+                label_border: "Ragamo rongko taribo (px)",
+                label_color: "Iano sitepe Rongko dingtang donbo",
+                btn_preview: "Nichembo / Taribo",
+                label_review: "4. Nichembo aro Ra·onbo",
+                btn_download_merge: "Bon·kamgipa Noksako Ra·onbo",
+                
+                conv_title: "Noksa Dingtangatgipa",
+                label_select_img: "Noksako Seokbo",
+                label_out_fmt: "Bimangdakna Nangenggipa",
+                label_size_mode: "Size Management Mode",
+                opt_compress: "Komiatbo (Compress)",
+                opt_increase: "Bariatbo (Padding)",
+                label_target_size: "Noksani Dal·a ba chona number ko on•bo (Optional) Indiba gapatna sikjaode blank wataibo",
+                conv_hint: "Komiatbo: Noksani gun komigen. Bariatbo: Size barigen.",
+                btn_convert_dl: "Dingtangatbo & Ra·onbo",
+                
+                i2p_title: "Noksa oni PDF",
+                label_select_imgs: "Noksarangko Seokbo",
+                btn_gen_pdf: "PDF Taribo",
+                p2i_title: "PDF oni Noksa",
+                label_select_pdf: "PDF Seokbo",
+                label_fmt: "Format",
+                btn_extract: "PDF ko Noksa Taribo",
+                size_title: "PDF Size Manager",
+                label_mode: "Mode",
+                btn_process: "Ka·bo"
+            }
+        };
+
+        function changeLanguage(lang) {
+            const t = translations[lang] || translations['en'];
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const key = el.getAttribute('data-lang-key');
+                if (t[key]) {
+                    el.textContent = t[key];
+                    if(key.includes("welcome_desc")) el.innerHTML = t[key]; 
+                }
+            });
+        }
+
+        // --- Drawer / Navigation Logic ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
+        function showPage(id) {
+            document.querySelectorAll('.page-view').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.category-item').forEach(e => e.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            
+            const items = document.querySelectorAll('.category-item');
+            items.forEach(i => { if(i.getAttribute('onclick').includes(id)) i.classList.add('active'); });
+
+            toggleSidebar();
+        }
+
+        // --- Utils & Alert/Progress System ---
+        const setStatus = (msg, type='proc') => {
+            // Keep existing status bar as fallback/secondary
+            const el = document.getElementById('status-bar');
+            el.innerHTML = msg; el.className = `status-${type}`; el.style.display='block';
+            if(type!=='proc') setTimeout(()=>el.style.display='none', 3000);
+        };
+
+        // Custom Alert
+        function showAlert(title, msg) {
+            document.getElementById('alert_title').innerText = title;
+            document.getElementById('alert_msg').innerText = msg;
+            document.getElementById('alert_modal').classList.add('active');
+        }
+        function closeAlert() {
+            document.getElementById('alert_modal').classList.remove('active');
+        }
+
+        // Custom Progress Bar
+        function startProgress(title = "Processing...") {
+            document.getElementById('progress_title').innerText = title;
+            document.getElementById('progress_fill').style.width = '0%';
+            document.getElementById('progress_text').innerText = '0%';
+            document.getElementById('progress_modal').classList.add('active');
+        }
+        
+        function updateProgress(percent) {
+            const p = Math.min(Math.max(percent, 0), 100).toFixed(0);
+            document.getElementById('progress_fill').style.width = p + '%';
+            document.getElementById('progress_text').innerText = p + '%';
+        }
+
+        function endProgress() {
+            setTimeout(() => {
+                document.getElementById('progress_modal').classList.remove('active');
+            }, 500); // Small delay to see 100%
+        }
+
+        // --- Preview Modal Logic ---
+        function openPreview(src) {
+            if(src) document.getElementById('preview_img_target').src = src;
+            document.getElementById('preview_modal').classList.add('active');
+        }
+        
+        function closePreview(e) {
+            // Close if clicked outside the image or on close button
+            if (!e || e.target.id === 'preview_modal' || e.target.tagName === 'BUTTON') {
+                document.getElementById('preview_modal').classList.remove('active');
+            }
+        }
+
+        const loadImg = src => new Promise(r => { const i=new Image(); i.onload=()=>r(i); i.src=src; });
+        const readFile = f => new Promise(r => { const rd=new FileReader(); rd.onload=()=>r(rd.result); rd.readAsDataURL(f); });
+        const sleep = ms => new Promise(r => setTimeout(r, ms)); // Helper for async UI updates
+
+        // ==========================================
+        //  REDUCE IMAGE SIZE LOGIC
+        // ==========================================
+        function setPreset(val) {
+            document.getElementById('red_val').value = val;
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function updateReduceFileInfo(input) {
+            const infoDiv = document.getElementById('red_file_info');
+            if (input.files && input.files[0]) {
+                const size = input.files[0].size;
+                const sizeStr = (size / 1024).toFixed(2) + ' KB';
+                infoDiv.textContent = `Original Size: ${sizeStr}`;
+            } else {
+                infoDiv.textContent = '';
+            }
+        }
+
+        async function runReduce() {
+            const f = document.getElementById('red_file').files[0];
+            const targetKB = parseFloat(document.getElementById('red_val').value);
+
+            if(!f) return showAlert("Error", "No file selected");
+            if(!targetKB || targetKB <= 0) return showAlert("Error", "Enter target size");
+
+            startProgress("Compressing...");
+
+            const img = await loadImg(await readFile(f));
+            updateProgress(10); // Loaded
+            
+            const c = document.createElement('canvas');
+            c.width = img.width;
+            c.height = img.height;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            const fmt = "image/jpeg";
+            const targetBytes = targetKB * 1024;
+            
+            let blob = null;
+            let quality = 0.9;
+            let minQ = 0.01;
+            let maxQ = 1.0;
+            let attempt = 0;
+            const maxAttempts = 15;
+
+            while (attempt < maxAttempts) {
+                blob = await new Promise(r => c.toBlob(r, fmt, quality));
+                
+                // Update progress based on attempts
+                const p = 10 + ((attempt / maxAttempts) * 80);
+                updateProgress(p);
+                await sleep(10); // Allow UI update
+
+                if (blob.size <= targetBytes && blob.size > targetBytes * 0.9) {
+                    break; 
+                }
+                
+                if (blob.size > targetBytes) {
+                    maxQ = quality;
+                } else {
+                    minQ = quality;
+                }
+                quality = (minQ + maxQ) / 2;
+                attempt++;
+            }
+
+            updateProgress(100);
+            // Default Name Change
+            saveAs(blob, `GH_filemaker_reduce_${targetKB}kb.jpg`);
+            endProgress();
+            setTimeout(()=>showAlert("Success", "Download Started!"), 600);
+        }
+
+        // ==========================================
+        //  INCREASE IMAGE SIZE LOGIC (NEW)
+        // ==========================================
+        function setIncPreset(val, unit) {
+            document.getElementById('inc_val').value = val;
+            document.getElementById('inc_unit').value = unit;
+            
+            // Visual toggle
+            const container = document.getElementById('increase-size').querySelector('.preset-container');
+            container.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function updateIncreaseFileInfo(input) {
+            const infoDiv = document.getElementById('inc_file_info');
+            if (input.files && input.files[0]) {
+                const size = input.files[0].size;
+                const sizeStr = size > 1024 * 1024 
+                    ? (size / (1024 * 1024)).toFixed(2) + ' MB' 
+                    : (size / 1024).toFixed(2) + ' KB';
+                infoDiv.textContent = `Original Size: ${sizeStr}`;
+            } else {
+                infoDiv.textContent = '';
+            }
+        }
+
+        async function runIncrease() {
+            const f = document.getElementById('inc_file').files[0];
+            const val = parseFloat(document.getElementById('inc_val').value);
+            const unit = document.getElementById('inc_unit').value;
+
+            if(!f) return showAlert("Error", "No file selected");
+            if(!val || val <= 0) return showAlert("Error", "Enter valid target size");
+
+            startProgress("Processing...");
+
+            // Read original file as ArrayBuffer
+            const ab = await new Promise(r => {
+                const fr = new FileReader();
+                fr.onload = () => r(fr.result);
+                fr.readAsArrayBuffer(f);
+            });
+            
+            const originalBytes = ab.byteLength;
+            const targetBytes = val * (unit === 'MB' ? 1024 * 1024 : 1024);
+            
+            updateProgress(30);
+
+            if(originalBytes >= targetBytes) {
+                endProgress();
+                return showAlert("Info", "File is already larger than target size.");
+            }
+
+            // Calculate padding needed
+            const diff = targetBytes - originalBytes;
+            const padding = new Uint8Array(Math.floor(diff));
+            
+            // Create new blob with original content + padding
+            const blob = new Blob([ab, padding], { type: f.type });
+            
+            updateProgress(100);
+            
+            // Filename
+            const ext = f.name.split('.').pop();
+            const name = `GH_filemaker_increased_${val}${unit.toLowerCase()}.${ext}`;
+            
+            saveAs(blob, name);
+            endProgress();
+            setTimeout(()=>showAlert("Success", "Download Started!"), 600);
+        }
+
+
+        // ==========================================
+        //  MERGE LOGIC
+        // ==========================================
+        let mergeImagesList = []; 
+
+        async function handleMergeFiles(input) {
+            if(!input.files.length) return;
+            startProgress("Loading Images...");
+            
+            const total = input.files.length;
+            for(let i=0; i<total; i++) {
+                const file = input.files[i];
+                const src = await readFile(file);
+                const imgObj = await loadImg(src);
+                mergeImagesList.push({
+                    file: file,
+                    img: imgObj,
+                    id: Date.now() + Math.random()
+                });
+                updateProgress(((i+1)/total) * 100);
+            }
+            endProgress();
+            renderMergeList();
+            input.value = ''; 
+        }
+
+        function renderMergeList() {
+            const container = document.getElementById('merge_list_ui');
+            if(mergeImagesList.length === 0) {
+                const lang = document.getElementById('lang_select').value;
+                const txt = translations[lang].no_img_added;
+                container.innerHTML = `<div style="padding:20px; text-align:center; color:#999;" data-lang-key="no_img_added">${txt}</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            mergeImagesList.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'merge-item';
+                div.innerHTML = `
+                    <img src="${item.img.src}">
+                    <div class="info">
+                        <strong>${index + 1}.</strong> ${item.file.name}<br>
+                        <small>${item.img.width} x ${item.img.height}</small>
+                    </div>
+                    <div class="merge-controls">
+                        <button class="btn-mini btn-up" onclick="moveMergeItem(${index}, -1)" ${index===0?'disabled':''}>↑</button>
+                        <button class="btn-mini btn-up" onclick="moveMergeItem(${index}, 1)" ${index===mergeImagesList.length-1?'disabled':''}>↓</button>
+                        <button class="btn-mini btn-del" onclick="removeMergeItem(${index})">✕</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function moveMergeItem(index, direction) {
+            const newIndex = index + direction;
+            if(newIndex < 0 || newIndex >= mergeImagesList.length) return;
+            const temp = mergeImagesList[index];
+            mergeImagesList[index] = mergeImagesList[newIndex];
+            mergeImagesList[newIndex] = temp;
+            renderMergeList();
+        }
+
+        function removeMergeItem(index) {
+            mergeImagesList.splice(index, 1);
+            renderMergeList();
+        }
+
+        function clearMergeList() {
+            mergeImagesList = [];
+            renderMergeList();
+            document.getElementById('merge_preview_section').style.display = 'none';
+        }
+
+        function generateMergePreview() {
+            if(mergeImagesList.length === 0) return showAlert("Error", "Add images first!");
+            startProgress("Generating Preview...");
+
+            setTimeout(() => {
+                const dir = document.getElementById('merge_dir').value;
+                const border = parseInt(document.getElementById('merge_border').value) || 0;
+                const color = document.getElementById('merge_color').value;
+                const canvas = document.getElementById('merge_canvas');
+                const ctx = canvas.getContext('2d');
+
+                let totalW = 0, totalH = 0;
+                updateProgress(20);
+                
+                if (dir === 'vertical') {
+                    let maxW = 0;
+                    mergeImagesList.forEach(i => {
+                        maxW = Math.max(maxW, i.img.width);
+                        totalH += i.img.height;
+                    });
+                    totalW = maxW + (border * 2);
+                    totalH += (border * (mergeImagesList.length + 1));
+                } else {
+                    let maxH = 0;
+                    mergeImagesList.forEach(i => {
+                        maxH = Math.max(maxH, i.img.height);
+                        totalW += i.img.width;
+                    });
+                    totalH = maxH + (border * 2);
+                    totalW += (border * (mergeImagesList.length + 1));
+                }
+                updateProgress(40);
+
+                canvas.width = totalW;
+                canvas.height = totalH;
+
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, totalW, totalH);
+
+                let currentX = border;
+                let currentY = border;
+
+                mergeImagesList.forEach((item, idx) => {
+                    if (dir === 'vertical') {
+                        const centerX = (totalW - item.img.width) / 2;
+                        ctx.drawImage(item.img, centerX, currentY);
+                        currentY += item.img.height + border;
+                    } else {
+                        const centerY = (totalH - item.img.height) / 2;
+                        ctx.drawImage(item.img, currentX, centerY);
+                        currentX += item.img.width + border;
+                    }
+                    // Approx progress
+                    updateProgress(40 + ((idx/mergeImagesList.length)*50));
+                });
+
+                updateProgress(100);
+                endProgress();
+
+                document.getElementById('merge_preview_section').style.display = 'block';
+                document.getElementById('merge_preview_section').scrollIntoView({behavior: "smooth"});
+            }, 100);
+        }
+
+        function openMergePreview() {
+            const canvas = document.getElementById('merge_canvas');
+            const url = canvas.toDataURL();
+            openPreview(url);
+        }
+
+        function downloadMerged() {
+            startProgress("Preparing Download...");
+            const canvas = document.getElementById('merge_canvas');
+            canvas.toBlob(blob => {
+                updateProgress(100);
+                // Default Name Change
+                saveAs(blob, `GH_filemaker_merged_${Date.now()}.png`);
+                endProgress();
+                setTimeout(()=>showAlert("Success", "Download Started!"), 600);
+            });
+        }
+
+        // ==========================================
+        //  IMAGE CONVERTER
+        // ==========================================
+        
+        function updateConvFileInfo(input) {
+            const infoDiv = document.getElementById('conv_file_info');
+            if (input.files && input.files[0]) {
+                const size = input.files[0].size;
+                const sizeStr = size > 1024 * 1024 
+                    ? (size / (1024 * 1024)).toFixed(2) + ' MB' 
+                    : (size / 1024).toFixed(2) + ' KB';
+                infoDiv.textContent = `Original File Size: ${sizeStr}`;
+            } else {
+                infoDiv.textContent = '';
+            }
+        }
+
+        async function runConvert() {
+            const f = document.getElementById('conv_file').files[0];
+            if(!f) return showAlert("Error", "No file selected");
+            
+            startProgress("Converting...");
+
+            const img = await loadImg(await readFile(f));
+            updateProgress(20);
+
+            const c = document.createElement('canvas');
+            c.width = img.width;
+            c.height = img.height;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            const fmt = document.getElementById('conv_fmt').value;
+            const mode = document.getElementById('conv_mode').value;
+            const targetVal = parseFloat(document.getElementById('conv_target_val').value);
+            const targetUnit = document.getElementById('conv_target_unit').value;
+            
+            let blob = null;
+
+            if (mode === 'increase') {
+                blob = await new Promise(r => c.toBlob(r, fmt, 1.0));
+                updateProgress(50);
+                if (targetVal && targetVal > 0) {
+                    const minBytes = targetVal * (targetUnit === 'MB' ? 1024 * 1024 : 1024);
+                    if (blob.size < minBytes) {
+                        const diff = minBytes - blob.size;
+                        const padding = new Uint8Array(Math.floor(diff));
+                        blob = new Blob([blob, padding], { type: fmt });
+                    }
+                }
+            } else {
+                let quality = 0.95;
+                if (targetVal && targetVal > 0) {
+                    const maxBytes = targetVal * (targetUnit === 'MB' ? 1024 * 1024 : 1024);
+                    let minQ = 0.05, maxQ = 1.0, attempt = 0;
+                    while (attempt < 15) {
+                        blob = await new Promise(r => c.toBlob(r, fmt, quality));
+                        if (blob.size <= maxBytes && blob.size > maxBytes * 0.9) break; 
+                        if (blob.size > maxBytes) { maxQ = quality; } else { minQ = quality; }
+                        quality = (minQ + maxQ) / 2;
+                        attempt++;
+                        updateProgress(20 + (attempt/15)*60);
+                        await sleep(10);
+                    }
+                } else {
+                    blob = await new Promise(r => c.toBlob(r, fmt, quality));
+                }
+            }
+
+            if (!blob) blob = await new Promise(r => c.toBlob(r, fmt, 0.8));
+            
+            updateProgress(100);
+            // Default Name Change
+            saveAs(blob, `GH_filemaker_converted.${fmt.split('/')[1]}`);
+            endProgress();
+            setTimeout(()=>showAlert("Success", "Download Started!"), 600);
+        }
+
+        // ==========================================
+        //  OTHER TOOLS
+        // ==========================================
+
+        let pdfImagesList = [];
+
+        async function handleI2PFiles(input) {
+            if(!input.files.length) return;
+            startProgress("Loading Images...");
+            
+            const total = input.files.length;
+            for(let i=0; i<total; i++) {
+                const file = input.files[i];
+                const src = await readFile(file);
+                const imgObj = await loadImg(src);
+                pdfImagesList.push({
+                    file: file,
+                    img: imgObj
+                });
+                updateProgress(((i+1)/total)*100);
+            }
+            renderI2PList();
+            input.value = ''; 
+            endProgress();
+        }
+
+        function renderI2PList() {
+            const container = document.getElementById('i2p_list_ui');
+            if(pdfImagesList.length === 0) {
+                const lang = document.getElementById('lang_select').value;
+                const txt = translations[lang].no_img_added;
+                container.innerHTML = `<div style="padding:20px; text-align:center; color:#999;" data-lang-key="no_img_added">${txt}</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            pdfImagesList.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'merge-item'; // Reuse existing style
+                div.innerHTML = `
+                    <img src="${item.img.src}">
+                    <div class="info">
+                        <strong>${index + 1}.</strong> ${item.file.name}<br>
+                        <small>${item.img.width} x ${item.img.height}</small>
+                    </div>
+                    <div class="merge-controls">
+                        <button class="btn-mini btn-del" onclick="removeI2PItem(${index})">✕</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function removeI2PItem(index) {
+            pdfImagesList.splice(index, 1);
+            renderI2PList();
+        }
+
+        function clearI2PList() {
+            pdfImagesList = [];
+            renderI2PList();
+            // Also hide result container
+            document.getElementById('i2p_result').style.display = 'none';
+        }
+
+        async function runI2P() {
+            if(!pdfImagesList.length) return showAlert("Error", "No images added");
+            
+            startProgress("Generating PDF...");
+            const doc = new window.jspdf.jsPDF();
+
+            const total = pdfImagesList.length;
+
+            for(let i=0; i<total; i++){
+                const img = pdfImagesList[i].img;
+                
+                // Logic to fit image in page
+                const imgW = img.width;
+                const imgH = img.height;
+                const pageW = doc.internal.pageSize.getWidth();
+                const pageH = doc.internal.pageSize.getHeight();
+                
+                // Calculate scale to fit
+                const ratio = Math.min(pageW / imgW, pageH / imgH);
+                const w = imgW * ratio;
+                const h = imgH * ratio;
+                
+                // Center it
+                const x = (pageW - w) / 2;
+                const y = (pageH - h) / 2;
+
+                if(i > 0) doc.addPage();
+                doc.addImage(img, 'JPEG', x, y, w, h);
+                
+                updateProgress(((i+1)/total)*100);
+                await sleep(10); // UI Refresh
+            }
+            
+            // Generate Blob instead of direct download
+            const blob = doc.output('blob');
+            const fileName = "GH_filemaker_images.pdf";
+
+            // Display Result
+            const resultDiv = document.getElementById('i2p_result');
+            
+            // Simple SVG PDF Icon
+            const icon = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M10 13l-2-2m0 0l2-2m-2 2h4"></path></svg>`;
+            
+            resultDiv.innerHTML = `
+                <div style="margin-bottom:15px">${icon}</div>
+                <div style="font-weight:bold; margin-bottom:10px; color:#333; font-size:1.1rem;">PDF Generated Successfully!</div>
+                <div style="color:#64748b; margin-bottom:15px">${fileName}</div>
+            `;
+            
+            const btn = document.createElement('button');
+            btn.className = 'action-btn success';
+            btn.innerText = 'Download PDF';
+            btn.onclick = () => saveAs(blob, fileName);
+            
+            resultDiv.appendChild(btn);
+            resultDiv.style.display = 'block';
+
+            endProgress();
+            
+            // Scroll to result
+            setTimeout(() => {
+                resultDiv.scrollIntoView({behavior: "smooth"});
+            }, 100);
+        }
+
+        // --- NEW PDF TO IMAGE LOGIC (No ZIP) ---
+        async function runP2I() {
+            const f = document.getElementById('p2i_file').files[0];
+            if(!f) return showAlert("Error", "No PDF Selected");
+            
+            const container = document.getElementById('p2i_results');
+            container.innerHTML = ''; // Clear previous results
+            
+            startProgress("Reading PDF...");
+            
+            const pdf = await pdfjsLib.getDocument(await readFile(f)).promise;
+            const fmt = document.getElementById('p2i_fmt').value; // e.g., 'image/png'
+            const ext = fmt.split('/')[1]; // e.g., 'png'
+            const total = pdf.numPages;
+
+            for(let i=1; i<=total; i++){
+                const p = await pdf.getPage(i);
+                const v = p.getViewport({scale:2}); // High quality scale
+                const c = document.createElement('canvas'); 
+                c.width = v.width; 
+                c.height = v.height;
+                
+                await p.render({canvasContext:c.getContext('2d'), viewport:v}).promise;
+                
+                // Convert to Blob for direct download/view
+                await new Promise(resolve => {
+                    c.toBlob(blob => {
+                        const url = URL.createObjectURL(blob);
+                        
+                        // Create UI Item
+                        const div = document.createElement('div');
+                        div.className = 'p2i-item';
+                        
+                        // Hidden img, used for preview logic
+                        const img = document.createElement('img');
+                        img.src = url;
+                        
+                        // View Button
+                        const viewBtn = document.createElement('button');
+                        viewBtn.className = 'p2i-btn view-btn';
+                        viewBtn.innerText = `View Page ${i}`;
+                        viewBtn.onclick = () => openPreview(url);
+
+                        // Download Button
+                        const btn = document.createElement('button');
+                        btn.className = 'p2i-btn';
+                        btn.innerText = `Download`;
+                        // Default Name Change
+                        btn.onclick = () => saveAs(blob, `GH_filemaker_page_${i}.${ext}`);
+                        
+                        div.appendChild(img); // Hidden
+                        div.appendChild(viewBtn);
+                        div.appendChild(btn);
+                        container.appendChild(div);
+                        
+                        resolve();
+                    }, fmt);
+                });
+                
+                updateProgress((i/total)*100);
+                await sleep(10); // Allow UI to update
+            }
+            
+            endProgress();
+            setTimeout(()=>showAlert("Success", "Images Extracted!"), 600);
+        }
+
+        // ==========================================
+        //  PDF SIZE MANAGER
+        // ==========================================
+        function updatePdfSizeInfo(input) {
+            const infoDiv = document.getElementById('size_file_info');
+            if (input.files && input.files[0]) {
+                const size = input.files[0].size;
+                const sizeStr = size > 1024 * 1024 
+                    ? (size / (1024 * 1024)).toFixed(2) + ' MB' 
+                    : (size / 1024).toFixed(2) + ' KB';
+                infoDiv.textContent = `Original File Size: ${sizeStr}`;
+            } else {
+                infoDiv.textContent = '';
+            }
+        }
+
+        async function runPdfSize() {
+            const f = document.getElementById('size_file').files[0];
+            const v = parseFloat(document.getElementById('size_val').value);
+            if(!f) return showAlert("Error", "No file selected");
+            
+            startProgress("Processing...");
+            const ab = await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsArrayBuffer(f)});
+            const originalBytes = ab.byteLength;
+            
+            let targetBytes = 0;
+            if(v && v > 0) {
+                targetBytes = v * (document.getElementById('size_unit').value==='MB'?1024*1024:1024);
+            }
+            updateProgress(10);
+
+            // Container for result
+            const resultDiv = document.getElementById('size_result');
+            resultDiv.innerHTML = '';
+            resultDiv.style.display = 'none';
+            
+            let blob = null;
+            let fileName = "";
+            let previewDataUrl = null;
+
+            if(document.getElementById('size_mode').value === 'increase') {
+                if(targetBytes > 0 && originalBytes >= targetBytes) {
+                    endProgress();
+                    return showAlert("Error", "File already larger than target");
+                }
+                const diff = targetBytes > 0 ? (targetBytes - originalBytes) : 1024;
+                const padding = new Uint8Array(Math.floor(diff));
+                blob = new Blob([ab, padding], {type:'application/pdf'});
+                fileName = "GH_filemaker_resized_padded.pdf";
+
+                // For increase mode, visual content is same, render page 1 of ORIGINAL
+                const pdf = await pdfjsLib.getDocument(ab).promise;
+                const p = await pdf.getPage(1);
+                const viewport = p.getViewport({scale: 0.5}); // Thumbnail scale
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await p.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
+                previewDataUrl = canvas.toDataURL();
+                
+                updateProgress(100);
+
+            } else {
+                // Compress Mode
+                let scale = 1.0;
+                let quality = 0.7;
+                if(targetBytes > 0 && targetBytes < originalBytes) {
+                    const ratio = targetBytes / originalBytes;
+                    if(ratio < 0.5) { scale = 0.7; quality = 0.4; }
+                    else if(ratio < 0.8) { scale = 0.9; quality = 0.6; }
+                }
+
+                const pdf = await pdfjsLib.getDocument(ab).promise;
+                const doc = new window.jspdf.jsPDF();
+                const total = pdf.numPages;
+
+                for(let i=1; i<=total; i++){
+                    const p = await pdf.getPage(i);
+                    const vp = p.getViewport({scale: scale});
+                    const c = document.createElement('canvas'); c.width=vp.width; c.height=vp.height;
+                    await p.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+                    
+                    // Capture thumbnail from page 1
+                    if (i === 1) {
+                        previewDataUrl = c.toDataURL('image/jpeg');
+                    }
+
+                    if(i>1) doc.addPage();
+                    doc.addImage(c.toDataURL('image/jpeg', quality), 'JPEG',0,0,doc.internal.pageSize.getWidth(),doc.internal.pageSize.getHeight());
+                    
+                    updateProgress(10 + (i/total)*80);
+                    await sleep(10);
+                }
+                blob = doc.output('blob');
+                fileName = "GH_filemaker_compressed.pdf";
+                updateProgress(100);
+            }
+
+            // Create View Button element to avoid large base64 strings in onclick attribute
+            const viewBtn = document.createElement('button');
+            viewBtn.className = 'action-btn secondary';
+            viewBtn.innerText = 'View Preview';
+            viewBtn.style.marginBottom = '10px';
+            viewBtn.onclick = () => openPreview(previewDataUrl);
+
+            // Show UI
+            resultDiv.innerHTML = `
+                <div style="font-weight:bold; margin-bottom:15px; color:#333; font-size:1.1rem;">Success!</div>
+                <div id="size_view_btn_container" style="margin-bottom:10px;"></div>
+                <div style="color:#64748b; margin-bottom:15px">${fileName} (${(blob.size/1024).toFixed(2)} KB)</div>
+            `;
+
+            // Append View Button
+            resultDiv.querySelector('#size_view_btn_container').appendChild(viewBtn);
+
+            const btn = document.createElement('button');
+            btn.className = 'action-btn success';
+            btn.innerText = 'Download PDF';
+            btn.onclick = () => saveAs(blob, fileName);
+
+            resultDiv.appendChild(btn);
+            resultDiv.style.display = 'block';
+
+            endProgress();
+            
+            setTimeout(()=> {
+                resultDiv.scrollIntoView({behavior: "smooth"});
+            }, 100);
+        }
+        
+        // Init
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+</body>
+</html>
