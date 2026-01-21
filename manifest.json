@@ -1,0 +1,20 @@
+{
+  "name": "All-in-One Media Tool",
+  "short_name": "MediaTool",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/GaroHills/File-maker/refs/heads/main/file_0000000087307230923a773d76222c7b.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/GaroHills/File-maker/refs/heads/main/file_0000000087307230923a773d76222c7b.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
