@@ -1,4 +1,8 @@
-const CACHE_NAME = "garohills-cache-v3";
+// --- VERSION CONFIGURATION ---
+// This line is read by index.html to check for updates
+const APP_VERSION = "1.0"; 
+
+const CACHE_NAME = `garohills-cache-${APP_VERSION}`;
 
 const FILES_TO_CACHE = [
   "./",
@@ -34,4 +38,5 @@ self.addEventListener("fetch", event => {
       return res || fetch(event.request);
     })
   );
-});
+}); 
+// ^-- Added closing brackets here
