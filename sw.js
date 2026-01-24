@@ -1,6 +1,6 @@
 // --- VERSION CONFIGURATION ---
 // This line is read by index.html to check for updates
-const APP_VERSION = "1.2"; 
+const APP_VERSION = "1.1.0"; 
 
 const CACHE_NAME = `garohills-cache-${APP_VERSION}`;
 
