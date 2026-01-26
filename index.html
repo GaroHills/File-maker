@@ -10,7 +10,6 @@
          crossorigin="anonymous"></script>
 
     <!-- External Modular Files -->
-    <!-- Note: tools.js is now handled dynamically by the sync function below -->
     <script src="icons.js"></script>
     <script src="metadata.js"></script>
 
@@ -33,6 +32,15 @@
             padding: 0;
             color: var(--text);
             overflow-x: hidden;
+        }
+
+        /* ADS STYLING */
+        .ad-top-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 2 5px 0;
+            width: 100%;
         }
 
         /* --- OFFLINE NOTIFICATION --- */
@@ -437,6 +445,20 @@
         <h1>File Tool Compressor</h1>
     </header>
 
+    <!-- AD BANNER SECTION -->
+    <div class="ad-top-center">
+        <script>
+          atOptions = {
+            'key' : 'c1d577c74875916be469e70c0be2a659',
+            'format' : 'iframe',
+            'height' : 50,
+            'width' : 320,
+            'params' : {}
+          };
+        </script>
+        <script src="https://summonteacherjunction.com/c1d577c74875916be469e70c0be2a659/invoke.js"></script>
+    </div>
+
     <div class="content">
         <div class="search-container">
             <div class="search-wrapper">
@@ -489,14 +511,15 @@
 
     <script>
         let allTools = [];
-        let lastToolsHash = ""; // Detects if tools.js has changed
+        let lastToolsHash = "";
+        let searchTimeout = null;
 
         // --- OFFLINE LOGIC ---
         function updateOnlineStatus() {
             const banner = document.getElementById('offlineNotice');
             if (navigator.onLine) {
                 banner.classList.remove('visible');
-                syncTools(); // Sync immediately when back online
+                syncTools();
             } else {
                 banner.classList.add('visible');
             }
@@ -555,17 +578,14 @@
         function syncTools() {
             if (!navigator.onLine) return;
 
-            // Create a new script element to fetch tools.js
             const oldSync = document.getElementById('tools-sync-script');
             if (oldSync) oldSync.remove();
 
             const script = document.createElement('script');
             script.id = 'tools-sync-script';
-            // cache-busting: add current time so browser always gets the newest file
             script.src = 'tools.js?v=' + Date.now(); 
             
             script.onload = () => {
-                // Check if manualToolList exists and has changed
                 if (typeof manualToolList !== 'undefined') {
                     const currentHash = JSON.stringify(manualToolList);
                     if (currentHash !== lastToolsHash) {
@@ -591,12 +611,11 @@
 
         function renderCategorized(list) {
             const container = document.getElementById('categorized-container');
-            const searchVal = document.getElementById('toolSearch').value.toLowerCase();
+            if (!container) return;
             
-            // Filter current list based on search
+            const searchVal = document.getElementById('toolSearch').value.toLowerCase();
             const filtered = list.filter(t => t.name.toLowerCase().includes(searchVal) || t.category.toLowerCase().includes(searchVal));
             
-            container.innerHTML = "";
             if(filtered.length === 0) {
                  container.innerHTML = "<p style='text-align:center;'>No tools found.</p>";
                  return;
@@ -608,47 +627,72 @@
                 groups[tool.category].push(tool);
             });
 
+            // Fast DOM rendering using DocumentFragment
+            const fragment = document.createDocumentFragment();
+
             for (const cat in groups) {
                 const section = document.createElement('div');
                 section.className = 'category-section';
-                section.innerHTML = `<div class="category-title">${cat}</div>`;
-                const grid = document.createElement('div');
-                grid.className = 'tool-grid';
+                
+                let gridHTML = `<div class="category-title">${cat}</div><div class="tool-grid">`;
+                
                 groups[cat].forEach(tool => {
                     const icon = (typeof toolIcons !== 'undefined' && toolIcons[tool.key]) ? toolIcons[tool.key] : (typeof toolIcons !== 'undefined' ? toolIcons["default"] : "🛠️");
                     const tagsHTML = tool.tags.map(t => `<span class="tool-tag" style="background:${tool.color}">${t}</span>`).join('');
-                    const card = document.createElement('a');
-                    card.href = tool.url; card.className = 'tool-card';
                     const displayName = tool.name.replace(/_/g, ' ').replace('.html', '');
-                    card.innerHTML = `<div class="card-icon">${icon}</div><div class="tool-name">${displayName}</div><div class="tag-container">${tagsHTML}</div>`;
-                    grid.appendChild(card);
+                    
+                    gridHTML += `
+                        <a href="${tool.url}" class="tool-card">
+                            <div class="card-icon">${icon}</div>
+                            <div class="tool-name">${displayName}</div>
+                            <div class="tag-container">${tagsHTML}</div>
+                        </a>`;
                 });
-                section.appendChild(grid);
-                container.appendChild(section);
+                
+                gridHTML += `</div>`;
+                section.innerHTML = gridHTML;
+                fragment.appendChild(section);
             }
+
+            container.innerHTML = "";
+            container.appendChild(fragment);
         }
 
         function setupDrawer(list) {
             const drawerItems = document.getElementById('drawer-items');
             if (!drawerItems) return;
-            drawerItems.innerHTML = "";
+            const fragment = document.createDocumentFragment();
             list.forEach(tool => {
                 const a = document.createElement('a');
                 a.href = tool.url;
                 const cleanName = tool.name.replace(/_/g, ' ').replace('.html', '');
                 a.innerHTML = `<span>📁</span> ${cleanName}`;
-                drawerItems.appendChild(a);
+                fragment.appendChild(a);
             });
+            drawerItems.innerHTML = "";
+            drawerItems.appendChild(fragment);
         }
 
+        // --- SMOOTH SEARCH DEBOUNCING ---
         document.getElementById('toolSearch').addEventListener('input', () => {
-            renderCategorized(allTools);
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                renderCategorized(allTools);
+            }, 150);
         });
 
         window.onload = () => {
-            syncTools(); 
             updateOnlineStatus();
-            // Polling: Check for new tools every 30 seconds
+            syncTools(); 
+
+            const retryInterval = setInterval(() => {
+                if (allTools.length > 0) {
+                    clearInterval(retryInterval);
+                } else {
+                    syncTools();
+                }
+            }, 1000);
+
             setInterval(syncTools, 30000); 
         };
     </script>
