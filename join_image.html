@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Merge / Join Images</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root { --primary: #3b82f6; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --radius: 12px; }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+        
+        /* Layout */
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        h2 { margin: 0; color: var(--primary); }
+
+        /* 1. Upload Box */
+        .upload-area {
+            border: 2px dashed var(--primary);
+            background: #eff6ff;
+            border-radius: var(--radius);
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover { background: #dbeafe; }
+        .upload-icon { font-size: 32px; margin-bottom: 8px; display: block; }
+        .upload-text { font-weight: 600; color: var(--primary); }
+        input[type="file"] { display: none; }
+
+        /* --- 2. Horizontal Scroll Layout --- */
+        .preview-scroll-container {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding: 5px 5px 15px 5px; 
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            scroll-behavior: smooth;
+        }
+
+        .preview-scroll-container::-webkit-scrollbar { height: 8px; }
+        .preview-scroll-container::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .preview-scroll-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .preview-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-width: 130px; 
+            width: 130px;
+            flex-shrink: 0;
+        }
+        
+        .file-icon-placeholder { font-size: 32px; margin-bottom: 5px; color: #94a3b8; }
+
+        .preview-info {
+            font-size: 11px; margin-top: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            width: 100%; font-weight: 600;
+        }
+
+        .card-actions { display: flex; gap: 5px; width: 100%; margin-top: 8px; }
+        .action-btn-small {
+            flex: 1; border: 1px solid var(--border); background: var(--bg);
+            border-radius: 4px; padding: 4px; font-size: 10px; cursor: pointer;
+        }
+        .view-trigger-btn {
+            background: transparent; border: 1px solid var(--primary); color: var(--primary);
+            border-radius: 4px; padding: 4px 10px; font-size: 11px; cursor: pointer; width: 100%; margin-top: 5px;
+        }
+        .view-trigger-btn:hover { background: var(--primary); color: white; }
+
+        .remove-btn {
+            position: absolute; top: -6px; right: -6px;
+            background: #ef4444; color: white; border: none;
+            border-radius: 50%; width: 22px; height: 22px;
+            cursor: pointer; font-size: 12px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10;
+        }
+
+        /* Controls Area */
+        .controls { background: var(--surface); padding: 20px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .form-group { flex: 1; min-width: 120px; }
+        label { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 8px; }
+        
+        select, input[type="number"] {
+            width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; height: 42px; background: var(--bg);
+        }
+
+        /* Color Scroller */
+        .color-scroll-container {
+            display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 8px 2px;
+            scrollbar-width: none; -ms-overflow-style: none;
+        }
+        .color-scroll-container::-webkit-scrollbar { display: none; }
+
+        .color-circle {
+            width: 32px; height: 32px; border-radius: 50%; border: 2px solid #e2e8f0;
+            cursor: pointer; flex-shrink: 0; transition: transform 0.1s, border-color 0.2s; position: relative;
+        }
+        .color-circle.active { border-color: var(--primary); transform: scale(1.15); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .custom-picker-circle { background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); border: 2px solid #cbd5e1; }
+        .hidden-color-input { position: absolute; top:0; left:0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+        /* Main Action Button */
+        .action-btn {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, var(--primary), #2563eb);
+            color: white; border: none; border-radius: 50px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(59,130,246,0.3);
+            margin-top: 10px;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: white; width: 90%; max-width: 500px;
+            border-radius: 20px; padding: 25px; max-height: 85vh;
+            display: flex; flex-direction: column; text-align: center;
+        }
+
+        .progress-bar { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin: 15px 0; width: 100%; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+
+        /* Viewer & Results */
+        .viewer-box {
+            background: transparent; box-shadow: none;
+            max-width: 95%; height: auto; text-align: center; position: relative;
+        }
+        .viewer-img {
+            max-width: 100%; max-height: 80vh; border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .close-viewer {
+            position: absolute; top: -40px; right: 0;
+            color: white; font-size: 30px; cursor: pointer; font-weight: bold;
+        }
+        .result-preview-img {
+            max-width: 100%; max-height: 300px; object-fit: contain;
+            border: 1px solid var(--border); border-radius: 8px; margin: 15px 0;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Merge / Join Images</h2>
+    </div>
+
+    <!-- 1. Upload Layout Box -->
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-icon">🧩</span>
+        <div class="upload-text">Click to Add Images</div>
+        <div style="font-size: 12px; color: #94a3b8; margin-top:5px;">Merge Vertically or Horizontally</div>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*" onchange="handleSelection(this)">
+
+    <!-- 2. Selected Images Horizontal Scroll -->
+    <div id="previewContainer" class="preview-scroll-container">
+        <div id="emptyMsg" style="width:100%; text-align:center; color:#94a3b8; padding:20px; font-size:14px; border:1px dashed #e2e8f0; border-radius:8px;">
+            No images selected yet
+        </div>
+    </div>
+
+    <!-- 3. Settings -->
+    <div class="controls">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Direction</label>
+                <select id="direction">
+                    <option value="vertical">Vertical ( ↓ )</option>
+                    <option value="horizontal">Horizontal ( → )</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Border Size (px)</label>
+                <input type="number" id="borderSize" value="0" min="0">
+            </div>
+        </div>
+        
+        <!-- Color Scroller -->
+        <div class="form-group" style="width: 100%;">
+            <label>Border Color</label>
+            <div class="color-scroll-container" id="colorScrollContainer">
+                <div class="color-circle custom-picker-circle" id="customColorCircle" title="Custom Color">
+                    <input type="color" class="hidden-color-input" onchange="selectCustomColor(this)">
+                </div>
+            </div>
+            <input type="hidden" id="selectedColorValue" value="#ffffff">
+        </div>
+    </div>
+
+    <button class="action-btn" onclick="startMerge()">Merge & Download</button>
+</div>
+
+<!-- Progress Modal -->
+<div id="loadingModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Merging Images...</h3>
+        <div class="progress-bar"><div id="pFill" class="progress-fill"></div></div>
+        <div id="pText">0%</div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div id="resultModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="margin-bottom:10px;">Merge Successful!</h3>
+        <img id="resultImage" class="result-preview-img" src="">
+        
+        <button class="action-btn" id="dlBtn">Download Image</button>
+        <button class="action-btn" onclick="location.reload()" style="background: white; color: #64748b; border: 1px solid #e2e8f0; margin-top: 10px;">Close & Clear</button>
+    </div>
+</div>
+
+<!-- Custom Alert Modal -->
+<div id="alertModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 320px; padding: 30px;">
+        <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+        <h3 style="margin:0 0 10px 0;">Notice</h3>
+        <p id="alertMsg" style="color:#64748b; margin-bottom:20px; font-size:14px;"></p>
+        <button class="action-btn" onclick="closeAlert()">OK</button>
+    </div>
+</div>
+
+<!-- Single Image Viewer Modal -->
+<div id="imageViewerModal" class="modal-overlay" onclick="closeViewer()">
+    <div class="viewer-box" onclick="event.stopPropagation()">
+        <div class="close-viewer" onclick="closeViewer()">&times;</div>
+        <img id="viewerImage" class="viewer-img" src="">
+    </div>
+</div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+    let selectedFiles = [];
+
+    // --- Custom Alert Logic ---
+    function showAlert(msg) {
+        document.getElementById('alertMsg').innerText = msg;
+        document.getElementById('alertModal').classList.add('active');
+    }
+    function closeAlert() {
+        document.getElementById('alertModal').classList.remove('active');
+    }
+
+    // --- Color Picker Initialization ---
+    const colors = ['#ffffff', '#000000', '#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722', '#795548', '#9e9e9e', '#607d8b'];
+    
+    const colorContainer = document.getElementById('colorScrollContainer');
+    colors.forEach(color => {
+        const circle = document.createElement('div');
+        circle.className = 'color-circle';
+        circle.style.backgroundColor = color;
+        if(color === '#ffffff') circle.classList.add('active'); 
+        
+        circle.onclick = () => {
+            document.querySelectorAll('.color-circle').forEach(c => c.classList.remove('active'));
+            circle.classList.add('active');
+            document.getElementById('selectedColorValue').value = color;
+        };
+        colorContainer.appendChild(circle);
+    });
+
+    function selectCustomColor(input) {
+        document.querySelectorAll('.color-circle').forEach(c => c.classList.remove('active'));
+        document.getElementById('customColorCircle').classList.add('active');
+        document.getElementById('selectedColorValue').value = input.value;
+    }
+
+    // --- File Logic ---
+    const formatSize = b => (b/1024).toFixed(1) + ' KB';
+
+    function handleSelection(input) {
+        if(input.files.length === 0) return;
+        const newFiles = Array.from(input.files);
+        selectedFiles = [...selectedFiles, ...newFiles];
+        renderGrid();
+        input.value = '';
+        
+        setTimeout(() => {
+            const container = document.getElementById('previewContainer');
+            container.scrollLeft = container.scrollWidth;
+        }, 100);
+    }
+
+    function renderGrid() {
+        const container = document.getElementById('previewContainer');
+        
+        if(selectedFiles.length === 0) {
+            container.innerHTML = `<div id="emptyMsg" style="width:100%; text-align:center; color:#94a3b8; padding:20px; font-size:14px; border:1px dashed #e2e8f0; border-radius:8px;">No images selected yet</div>`;
+            return;
+        }
+
+        container.innerHTML = ''; 
+
+        selectedFiles.forEach((file, index) => {
+            const url = URL.createObjectURL(file);
+            const div = document.createElement('div');
+            div.className = 'preview-card';
+            div.innerHTML = `
+                <button class="remove-btn" onclick="removeFile(${index})">×</button>
+                <div class="file-icon-placeholder">🖼️</div>
+                <div class="preview-info" title="${file.name}">${index + 1}. ${file.name}</div>
+                <div class="preview-info" style="color:#64748b">${formatSize(file.size)}</div>
+                
+                <div class="card-actions">
+                    <button class="action-btn-small" onclick="moveFile(${index}, -1)" ${index===0 ? 'disabled style="opacity:0.3"' : ''}>←</button>
+                    <button class="action-btn-small" onclick="moveFile(${index}, 1)" ${index===selectedFiles.length-1 ? 'disabled style="opacity:0.3"' : ''}>→</button>
+                </div>
+                
+                <button class="view-trigger-btn" onclick="openViewer('${url}')">View</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        renderGrid();
+    }
+
+    function moveFile(index, direction) {
+        const newIndex = index + direction;
+        if (newIndex >= 0 && newIndex < selectedFiles.length) {
+            [selectedFiles[index], selectedFiles[newIndex]] = [selectedFiles[newIndex], selectedFiles[index]];
+            renderGrid();
+        }
+    }
+
+    // Viewer Logic
+    function openViewer(url) {
+        document.getElementById('viewerImage').src = url;
+        document.getElementById('imageViewerModal').classList.add('active');
+    }
+
+    function closeViewer() {
+        document.getElementById('imageViewerModal').classList.remove('active');
+        document.getElementById('viewerImage').src = '';
+    }
+
+    // --- Merge Logic ---
+    async function startMerge() {
+        if(selectedFiles.length < 2) {
+            showAlert("Please select at least 2 images!");
+            return;
+        }
+
+        const border = parseInt(document.getElementById('borderSize').value) || 0;
+        const color = document.getElementById('selectedColorValue').value;
+        const direction = document.getElementById('direction').value;
+        const isVertical = direction === 'vertical';
+
+        document.getElementById('loadingModal').classList.add('active');
+        const pFill = document.getElementById('pFill');
+        const pText = document.getElementById('pText');
+
+        const loadedImages = [];
+        const total = selectedFiles.length;
+
+        for(let i=0; i<total; i++) {
+            const pct = Math.round(((i+1)/total)*80);
+            pFill.style.width = pct+'%';
+            pText.innerText = `Loading ${i+1}/${total}`;
+
+            const img = await loadImage(selectedFiles[i]);
+            loadedImages.push(img);
+        }
+
+        let totalW = 0, totalH = 0;
+        if (isVertical) {
+            totalW = Math.max(...loadedImages.map(i => i.width)) + (border * 2);
+            totalH = loadedImages.reduce((sum, i) => sum + i.height, 0) + (border * (loadedImages.length + 1));
+        } else {
+            totalW = loadedImages.reduce((sum, i) => sum + i.width, 0) + (border * (loadedImages.length + 1));
+            totalH = Math.max(...loadedImages.map(i => i.height)) + (border * 2);
+        }
+
+        const canvas = document.getElementById('canvas');
+        canvas.width = totalW;
+        canvas.height = totalH;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, totalW, totalH);
+
+        let x = border, y = border;
+        loadedImages.forEach(img => {
+            let drawX = x;
+            let drawY = y;
+
+            if (isVertical) {
+                drawX = x + (totalW - (border*2) - img.width) / 2;
+            } else {
+                drawY = y + (totalH - (border*2) - img.height) / 2;
+            }
+
+            ctx.drawImage(img, drawX, drawY);
+
+            if (isVertical) y += img.height + border;
+            else x += img.width + border;
+        });
+
+        pFill.style.width = '100%';
+        pText.innerText = 'Finalizing...';
+
+        setTimeout(() => {
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const resImg = document.getElementById('resultImage');
+                resImg.src = url;
+                
+                document.getElementById('dlBtn').onclick = () => saveAs(blob, "merged_image.png");
+                
+                document.getElementById('loadingModal').classList.remove('active');
+                document.getElementById('resultModal').classList.add('active');
+            }, 'image/png');
+        }, 500);
+    }
+
+    const loadImage = file => new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.src = URL.createObjectURL(file);
+    });
+
+</script>
+
+</body>
+</html>

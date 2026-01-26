@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Batch Image Size Increaser</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root { --primary: #3b82f6; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --radius: 12px; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; }
+        
+        /* Layout */
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
+        .header { text-align: center; margin-bottom: 25px; }
+        h2 { margin: 0; color: var(--primary); font-size: 24px; }
+        p { color: #64748b; font-size: 14px; margin-top: 5px; }
+
+        /* 1. Upload Box */
+        .upload-area {
+            border: 2px dashed var(--primary);
+            background: #eff6ff;
+            border-radius: var(--radius);
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 20px;
+            user-select: none;
+        }
+        .upload-area:active { transform: scale(0.98); }
+        .upload-icon { font-size: 36px; margin-bottom: 10px; display: block; }
+        .upload-text { font-weight: 600; color: var(--primary); font-size: 16px; }
+        .upload-sub { font-size: 12px; color: #94a3b8; margin-top:5px; }
+        input[type="file"] { display: none; }
+
+        /* 2. Selected Files Layout (Horizontal Scroll) */
+        .preview-grid {
+            display: flex;
+            overflow-x: auto;
+            gap: 12px;
+            padding: 5px 2px 15px 2px;
+            margin-bottom: 20px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            min-height: 10px; 
+        }
+
+        .preview-grid::-webkit-scrollbar { height: 6px; }
+        .preview-grid::-webkit-scrollbar-track { background: transparent; }
+        .preview-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .file-card {
+            flex: 0 0 110px;
+            width: 110px;
+            scroll-snap-align: start;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 5px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .file-icon { font-size: 28px; margin-bottom: 5px; color: #94a3b8; }
+        
+        .file-name {
+            font-size: 11px; font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            width: 90%; margin-bottom: 2px;
+        }
+        .file-size { font-size: 10px; color: #64748b; margin-bottom: 8px; }
+
+        .view-btn {
+            background: transparent; border: 1px solid var(--primary);
+            color: var(--primary); border-radius: 4px;
+            padding: 4px 10px; font-size: 10px; cursor: pointer; width: 80%;
+        }
+        .remove-btn {
+            position: absolute; top: -6px; right: -6px;
+            background: #ef4444; color: white; border: none;
+            border-radius: 50%; width: 22px; height: 22px;
+            cursor: pointer; font-size: 14px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 5;
+        }
+
+        /* Controls Section */
+        .controls { background: var(--surface); padding: 20px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 10px; }
+        
+        .preset-row { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .preset-btn { 
+            flex: 1; min-width: 70px; padding: 10px; 
+            background: var(--bg); border: 1px solid var(--border); 
+            border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; color: #64748b;
+        }
+        .preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        .input-group { display: flex; gap: 10px; }
+        input[type="number"] { flex: 2; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 16px; outline: none; }
+        input[type="number"]:focus { border-color: var(--primary); }
+        select { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); font-size: 16px; }
+
+        /* Main Action Button */
+        .action-btn {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, var(--primary), #2563eb);
+            color: white; border: none; border-radius: 50px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(59,130,246,0.3);
+            transition: transform 0.1s;
+        }
+        .action-btn:active { transform: scale(0.98); }
+
+        /* Secondary Button (For Alerts/Confirms) */
+        .btn-secondary {
+            background: transparent; border: 1px solid #cbd5e1;
+            color: #64748b; padding: 12px 20px; border-radius: 50px;
+            font-weight: 600; cursor: pointer; flex: 1;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .modal-box {
+            background: white; width: 90%; max-width: 450px;
+            border-radius: 16px; padding: 25px; max-height: 85vh;
+            display: flex; flex-direction: column; position: relative;
+        }
+
+        /* Results List */
+        .results-list { overflow-y: auto; margin: 15px 0; border-top: 1px solid var(--border); }
+        .result-item {
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border); padding: 12px 0; gap: 10px;
+        }
+        .result-info { font-size: 13px; flex: 1; }
+        .size-arrow { color: #94a3b8; margin: 0 4px; }
+        .size-final { color: #16a34a; font-weight: 700; }
+        .size-skipped { color: #d97706; font-weight: 700; }
+        .dl-mini-btn {
+            background: var(--primary); color: white; border: none;
+            padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;
+        }
+
+        /* Progress Bar */
+        .progress-container { width: 100%; margin: 15px 0; }
+        .progress-track { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
+        .progress-text { text-align: center; font-size: 12px; color: #64748b; margin-top: 5px; }
+
+        /* Image Viewer */
+        .viewer-wrapper { text-align: center; position: relative; width: 100%; }
+        .viewer-img { max-width: 100%; max-height: 70vh; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        .viewer-close {
+            position: absolute; top: -40px; right: 0; color: white;
+            font-size: 28px; cursor: pointer; font-weight: bold; background: none; border: none;
+        }
+
+        /* Custom Alert Styles */
+        .alert-icon { font-size: 40px; margin-bottom: 10px; text-align: center; display: block; }
+        .alert-btns { display: flex; gap: 10px; margin-top: 20px; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Image Size Increaser</h2>
+        <p>Increase KB/MB size without resizing dimensions.</p>
+    </div>
+
+    <!-- Upload Area -->
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-icon">📂</span>
+        <div class="upload-text">Tap to Select Images</div>
+        <div class="upload-sub">Files remain on your device</div>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*" onchange="handleSelection(this)">
+
+    <!-- Selected Files Horizontal Scroll -->
+    <div id="previewGrid" class="preview-grid" style="display:none;"></div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <span class="label">Minimum Target Size</span>
+        <div class="preset-row">
+            <button class="preset-btn" onclick="setPreset(500, 'KB', this)">500 KB</button>
+            <button class="preset-btn active" onclick="setPreset(1, 'MB', this)">1 MB</button>
+            <button class="preset-btn" onclick="setPreset(2, 'MB', this)">2 MB</button>
+            <button class="preset-btn" onclick="setPreset(5, 'MB', this)">5 MB</button>
+        </div>
+        <div class="input-group">
+            <input type="number" id="targetVal" value="1" inputmode="decimal" placeholder="Size">
+            <select id="targetUnit">
+                <option value="KB">KB</option>
+                <option value="MB" selected>MB</option>
+            </select>
+        </div>
+    </div>
+
+    <button class="action-btn" onclick="startProcessing()">Increase Size & Download</button>
+</div>
+
+<!-- Progress Modal -->
+<div id="loadingModal" class="modal-overlay">
+    <div class="modal-box" style="align-items: center; justify-content: center; text-align: center;">
+        <h3 style="margin:0 0 10px 0;">Processing...</h3>
+        <div class="progress-container">
+            <div class="progress-track"><div id="pFill" class="progress-fill"></div></div>
+            <div id="pText" class="progress-text">0%</div>
+        </div>
+        <div style="font-size:12px; color:#94a3b8;">Adding null bytes...</div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div id="resultModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="margin:0;">Done!</h3>
+        <div class="results-list" id="resultsContainer"></div>
+        <button class="action-btn" onclick="closeResults()" style="padding:12px; font-size:14px; background: #64748b; margin-top: auto;">Close</button>
+    </div>
+</div>
+
+<!-- Custom Alert Modal -->
+<div id="alertModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 320px; text-align: center;">
+        <div class="alert-icon">⚠️</div>
+        <h3 id="alertTitle" style="margin:0 0 10px 0;">Notice</h3>
+        <p id="alertMsg" style="color:#64748b; margin:0; font-size:14px; line-height:1.5;"></p>
+        <div id="alertButtons" class="alert-btns"></div>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div id="imageViewerModal" class="modal-overlay" onclick="closeViewer()">
+    <div class="viewer-wrapper" onclick="event.stopPropagation()">
+        <button class="viewer-close" onclick="closeViewer()">&times;</button>
+        <img id="viewerImage" class="viewer-img" src="">
+        <div id="viewerName" style="color:white; margin-top:10px; font-size:14px;"></div>
+    </div>
+</div>
+
+<script>
+    let selectedFiles = [];
+
+    // --- Custom Alert System ---
+    function showAlert(msg) {
+        return new Promise(resolve => {
+            const modal = document.getElementById('alertModal');
+            document.getElementById('alertMsg').innerText = msg;
+            
+            const btnContainer = document.getElementById('alertButtons');
+            btnContainer.innerHTML = '';
+            
+            const okBtn = document.createElement('button');
+            okBtn.className = 'action-btn';
+            okBtn.innerText = 'OK';
+            okBtn.onclick = () => {
+                modal.classList.remove('active');
+                resolve();
+            };
+            
+            btnContainer.appendChild(okBtn);
+            modal.classList.add('active');
+        });
+    }
+
+    function showConfirm(msg) {
+        return new Promise(resolve => {
+            const modal = document.getElementById('alertModal');
+            document.getElementById('alertMsg').innerText = msg;
+            
+            const btnContainer = document.getElementById('alertButtons');
+            btnContainer.innerHTML = '';
+            
+            // Cancel Button
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn-secondary';
+            cancelBtn.innerText = 'Cancel';
+            cancelBtn.onclick = () => {
+                modal.classList.remove('active');
+                resolve(false);
+            };
+
+            // Yes Button
+            const yesBtn = document.createElement('button');
+            yesBtn.className = 'action-btn';
+            yesBtn.innerText = 'Continue';
+            yesBtn.onclick = () => {
+                modal.classList.remove('active');
+                resolve(true);
+            };
+            
+            btnContainer.appendChild(cancelBtn);
+            btnContainer.appendChild(yesBtn);
+            modal.classList.add('active');
+        });
+    }
+
+    const formatSize = b => {
+        if(b === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(b) / Math.log(1024));
+        return (b / Math.pow(1024, i)).toFixed(2) + ' ' + units[i];
+    };
+
+    // 1. Handle File Input
+    function handleSelection(input) {
+        if(input.files.length === 0) return;
+        selectedFiles = [...selectedFiles, ...Array.from(input.files)];
+        renderGrid();
+        input.value = ''; 
+    }
+
+    // 2. Render Horizontal Grid
+    function renderGrid() {
+        const grid = document.getElementById('previewGrid');
+        grid.innerHTML = ''; 
+
+        if(selectedFiles.length === 0) {
+            grid.style.display = 'none';
+            return;
+        }
+        grid.style.display = 'flex'; 
+
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'file-card';
+            div.innerHTML = `
+                <button class="remove-btn" onclick="removeFile(${index})">×</button>
+                <div class="file-icon">📄</div>
+                <div class="file-name">${file.name}</div>
+                <div class="file-size">${formatSize(file.size)}</div>
+                <button class="view-btn" onclick="openViewer(${index})">View</button>
+            `;
+            grid.appendChild(div);
+        });
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        renderGrid();
+    }
+
+    function setPreset(val, unit, btn) {
+        document.getElementById('targetVal').value = val;
+        document.getElementById('targetUnit').value = unit;
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    function openViewer(index) {
+        if(index >= selectedFiles.length) return;
+        const file = selectedFiles[index];
+        const url = URL.createObjectURL(file);
+        document.getElementById('viewerImage').src = url;
+        document.getElementById('viewerName').innerText = file.name;
+        document.getElementById('imageViewerModal').classList.add('active');
+    }
+
+    function closeViewer() {
+        document.getElementById('imageViewerModal').classList.remove('active');
+        setTimeout(() => { document.getElementById('viewerImage').src = ""; }, 200);
+    }
+
+    async function startProcessing() {
+        if(selectedFiles.length === 0) {
+            await showAlert("Please upload images first.");
+            return;
+        }
+        
+        const val = parseFloat(document.getElementById('targetVal').value);
+        const unit = document.getElementById('targetUnit').value;
+        if(!val || val <= 0) {
+            await showAlert("Please enter a valid target size.");
+            return;
+        }
+
+        const multiplier = unit === 'MB' ? 1024 * 1024 : 1024;
+        const targetBytes = val * multiplier;
+
+        const alreadyLarge = selectedFiles.filter(f => f.size >= targetBytes);
+        if(alreadyLarge.length > 0) {
+            // Replaced native confirm with custom showConfirm
+            const shouldContinue = await showConfirm(`Note: ${alreadyLarge.length} image(s) are already larger than ${val} ${unit}.\n\nThey will be skipped (original kept).`);
+            if(!shouldContinue) return;
+        }
+
+        document.getElementById('loadingModal').classList.add('active');
+        const pFill = document.getElementById('pFill');
+        const pText = document.getElementById('pText');
+        
+        const results = [];
+        const total = selectedFiles.length;
+
+        for(let i=0; i<total; i++) {
+            const pct = Math.round(((i) / total) * 100);
+            pFill.style.width = pct + '%';
+            pText.innerText = `Processing ${i+1}/${total}`;
+            await new Promise(r => setTimeout(r, 20)); 
+
+            try {
+                const res = await increaseFileSize(selectedFiles[i], targetBytes);
+                results.push(res);
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        pFill.style.width = '100%';
+        pText.innerText = 'Finalizing...';
+
+        setTimeout(() => {
+            document.getElementById('loadingModal').classList.remove('active');
+            showResults(results);
+        }, 500);
+    }
+
+    async function increaseFileSize(file, targetBytes) {
+        if (file.size >= targetBytes) return { original: file, blob: file, skipped: true };
+
+        return new Promise(async (resolve) => {
+            const arrayBuffer = await file.arrayBuffer();
+            const paddingNeeded = targetBytes - arrayBuffer.byteLength;
+            const padding = new Uint8Array(paddingNeeded);
+            const newBlob = new Blob([arrayBuffer, padding], { type: file.type });
+            
+            resolve({ original: file, blob: newBlob, skipped: false });
+        });
+    }
+
+    function showResults(data) {
+        const container = document.getElementById('resultsContainer');
+        container.innerHTML = '';
+
+        data.forEach((item) => {
+            const row = document.createElement('div');
+            row.className = 'result-item';
+            
+            const origSize = formatSize(item.original.size);
+            const newSize = formatSize(item.blob.size);
+            
+            let details = item.skipped 
+                ? `<div style="color:#64748b">${origSize} <span class="size-arrow">➝</span> <span class="size-skipped">Skipped</span></div>`
+                : `<div style="color:#64748b">${origSize} <span class="size-arrow">➝</span> <span class="size-final">${newSize}</span></div>`;
+
+            row.innerHTML = `
+                <div class="result-info">
+                    <div style="font-weight:600; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:180px;">${item.original.name}</div>
+                    ${details}
+                </div>
+                <button class="dl-mini-btn">Download</button>
+            `;
+
+            row.querySelector('.dl-mini-btn').onclick = () => {
+                const prefix = item.skipped ? "skipped_" : "resized_";
+                saveAs(item.blob, prefix + item.original.name);
+            };
+            container.appendChild(row);
+        });
+
+        document.getElementById('resultModal').classList.add('active');
+    }
+
+    function closeResults() {
+        document.getElementById('resultModal').classList.remove('active');
+    }
+</script>
+
+</body>
+</html>

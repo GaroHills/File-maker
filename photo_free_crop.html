@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Passport Photo Maker</title>
+    
+    <!-- Cropper.js (Required for cropping) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        :root { --primary: #3b82f6; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --radius: 12px; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; }
+        
+        /* Layout */
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
+        .header { text-align: center; margin-bottom: 25px; }
+        h2 { margin: 0; color: var(--primary); font-size: 24px; }
+        p { color: #64748b; font-size: 14px; margin-top: 5px; }
+
+        /* 1. Upload Box */
+        .upload-area {
+            border: 2px dashed var(--primary);
+            background: #eff6ff;
+            border-radius: var(--radius);
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 20px;
+            user-select: none;
+        }
+        .upload-area:active { transform: scale(0.98); }
+        .upload-icon { font-size: 36px; margin-bottom: 10px; display: block; }
+        .upload-text { font-weight: 600; color: var(--primary); font-size: 16px; }
+        .upload-sub { font-size: 12px; color: #94a3b8; margin-top:5px; }
+        input[type="file"] { display: none; }
+
+        /* 2. Editor Section */
+        .editor-section { display: none; animation: fadeIn 0.4s ease; }
+        
+        .cropper-container-box {
+            background: #1e293b; /* Dark background for contrast */
+            border-radius: 8px;
+            height: 400px; /* Fixed height for editor */
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        img#cropImage { max-width: 100%; display: block; }
+
+        /* Controls / Presets */
+        .controls { background: var(--surface); padding: 15px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .label { font-weight: 600; font-size: 14px; display: block; margin-bottom: 10px; }
+
+        .preset-row { 
+            display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; 
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        .preset-row::-webkit-scrollbar { display: none; /* Hide scrollbar Chrome */ }
+
+        .preset-btn { 
+            flex: 0 0 auto; padding: 10px 15px; 
+            background: var(--bg); border: 1px solid var(--border); 
+            border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; color: #64748b;
+            transition: 0.2s;
+        }
+        .preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Main Action Button */
+        .action-btn {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, var(--primary), #2563eb);
+            color: white; border: none; border-radius: 50px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(59,130,246,0.3);
+            transition: transform 0.1s;
+        }
+        .action-btn:active { transform: scale(0.98); }
+
+        /* 3. Result Section */
+        .result-section { 
+            display: none; text-align: center; animation: slideUp 0.4s ease;
+            background: var(--surface); padding: 20px; border-radius: var(--radius);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .result-img-wrapper {
+            display: inline-block;
+            padding: 10px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .result-img { max-width: 100%; max-height: 300px; display: block; }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-secondary {
+            background: transparent; border: 1px solid #cbd5e1;
+            color: #64748b; padding: 14px; border-radius: 50px;
+            font-weight: 600; cursor: pointer; flex: 1;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .modal-box {
+            background: white; width: 90%; max-width: 400px;
+            border-radius: 16px; padding: 25px; max-height: 85vh;
+            display: flex; flex-direction: column; text-align: center; position: relative;
+        }
+
+        /* Progress Bar */
+        .progress-container { width: 100%; margin: 15px 0; }
+        .progress-track { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
+
+        /* Custom Alert Styles */
+        .alert-icon { font-size: 40px; margin-bottom: 10px; display: block; }
+        .alert-btns { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
+
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Passport Photo Maker</h2>
+        <p>Crop and format photos for official documents.</p>
+    </div>
+
+    <!-- 1. Upload Area -->
+    <div class="upload-area" id="uploadBox" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-icon">📸</span>
+        <div class="upload-text">Tap to Select Photo</div>
+        <div class="upload-sub">Supports JPG, PNG, WEBP</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(this)">
+
+    <!-- 2. Editor Area -->
+    <div id="editorSection" class="editor-section">
+        <div class="cropper-container-box">
+            <img id="cropImage" src="">
+        </div>
+
+        <div class="controls">
+            <span class="label">Select Size / Ratio</span>
+            <div class="preset-row">
+                <button class="preset-btn active" onclick="setRatio(3.5/4.5, this)">Passport (3.5x4.5cm)</button>
+                <button class="preset-btn" onclick="setRatio(1, this)">Square (2x2" US)</button>
+                <button class="preset-btn" onclick="setRatio(30/40, this)">30x40mm</button>
+                <button class="preset-btn" onclick="setRatio(35/45, this)">35x45mm (UK/EU)</button>
+                <button class="preset-btn" onclick="setRatio(NaN, this)">Free Crop</button>
+            </div>
+        </div>
+
+        <button class="action-btn" onclick="processImage()">✂️ Crop & Process</button>
+    </div>
+
+    <!-- 3. Result Area -->
+    <div id="resultSection" class="result-section">
+        <h3 style="margin: 0 0 15px 0; color: var(--primary);">Ready to Download</h3>
+        
+        <div class="result-img-wrapper">
+            <img id="resultImage" class="result-img">
+        </div>
+
+        <button class="action-btn" onclick="downloadResult()">Download Photo</button>
+        <button class="btn-secondary" style="margin-top:10px; width:100%; border:none; color:#94a3b8;" onclick="location.reload()">Start Over</button>
+    </div>
+
+</div>
+
+<!-- Progress Modal -->
+<div id="loadingModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="margin:0 0 10px 0;">Processing...</h3>
+        <div class="progress-container">
+            <div class="progress-track"><div id="pFill" class="progress-fill"></div></div>
+        </div>
+        <div style="font-size:12px; color:#94a3b8;">Applying crop...</div>
+    </div>
+</div>
+
+<!-- Custom Alert Modal -->
+<div id="alertModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="alert-icon">⚠️</div>
+        <h3 id="alertTitle" style="margin:0 0 10px 0;">Notice</h3>
+        <p id="alertMsg" style="color:#64748b; margin:0; font-size:14px; line-height:1.5;"></p>
+        <div class="alert-btns">
+            <button class="action-btn" style="padding: 10px 30px;" onclick="closeAlert()">OK</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let cropper = null;
+    const imageEl = document.getElementById('cropImage');
+    const uploadBox = document.getElementById('uploadBox');
+    const editorSection = document.getElementById('editorSection');
+    const resultSection = document.getElementById('resultSection');
+
+    // --- Custom Alert Logic ---
+    function showAlert(msg) {
+        document.getElementById('alertMsg').innerText = msg;
+        document.getElementById('alertModal').classList.add('active');
+    }
+    function closeAlert() {
+        document.getElementById('alertModal').classList.remove('active');
+    }
+
+    // --- Step 1: Handle File ---
+    function handleFileSelect(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            
+            if (!file.type.startsWith('image/')) {
+                showAlert("Please select a valid image file.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Hide Upload, Show Editor
+                uploadBox.style.display = 'none';
+                editorSection.style.display = 'block';
+                
+                // Set Image
+                imageEl.src = e.target.result;
+
+                // Init Cropper
+                if (cropper) cropper.destroy();
+                
+                cropper = new Cropper(imageEl, {
+                    aspectRatio: 3.5 / 4.5, // Default
+                    viewMode: 1,
+                    autoCropArea: 0.9,
+                    dragMode: 'move',
+                    toggleDragModeOnDblclick: false,
+                });
+            }
+            reader.readAsDataURL(file);
+        }
+        input.value = ''; // Reset
+    }
+
+    // --- Step 2: Set Aspect Ratio ---
+    function setRatio(ratio, btn) {
+        if (!cropper) return;
+        cropper.setAspectRatio(ratio);
+        
+        // Update Buttons
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    // --- Step 3: Process ---
+    function processImage() {
+        if (!cropper) return;
+
+        // Show Loading
+        document.getElementById('loadingModal').classList.add('active');
+        const pFill = document.getElementById('pFill');
+        pFill.style.width = '0%';
+
+        // Simulate progress for UX
+        setTimeout(() => { pFill.style.width = '50%'; }, 200);
+
+        setTimeout(() => {
+            // Get High Quality Canvas
+            const canvas = cropper.getCroppedCanvas({
+                minWidth: 600,
+                minHeight: 600,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+
+            if(!canvas) {
+                document.getElementById('loadingModal').classList.remove('active');
+                showAlert("Could not crop image. Please try again.");
+                return;
+            }
+
+            const resultImg = document.getElementById('resultImage');
+            resultImg.src = canvas.toDataURL('image/jpeg', 0.95);
+
+            pFill.style.width = '100%';
+            
+            setTimeout(() => {
+                document.getElementById('loadingModal').classList.remove('active');
+                editorSection.style.display = 'none';
+                resultSection.style.display = 'block';
+            }, 400);
+
+        }, 500);
+    }
+
+    // --- Step 4: Download ---
+    function downloadResult() {
+        const imgSrc = document.getElementById('resultImage').src;
+        if(!imgSrc) return;
+
+        // Convert Base64 to Blob for FileSaver
+        fetch(imgSrc)
+            .then(res => res.blob())
+            .then(blob => {
+                const date = new Date().getTime();
+                saveAs(blob, `Passport_Photo_${date}.jpg`);
+            });
+    }
+
+</script>
+
+</body>
+</html>

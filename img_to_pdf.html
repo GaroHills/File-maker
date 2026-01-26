@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Image to PDF Converter</title>
+    <!-- jsPDF for client-side PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root { --primary: #3b82f6; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --radius: 12px; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; }
+        
+        /* Layout */
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
+        .header { text-align: center; margin-bottom: 25px; }
+        h2 { margin: 0; color: var(--primary); font-size: 24px; }
+        p { color: #64748b; font-size: 14px; margin-top: 5px; }
+
+        /* 1. Upload Box */
+        .upload-area {
+            border: 2px dashed var(--primary);
+            background: #eff6ff;
+            border-radius: var(--radius);
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 20px;
+            user-select: none;
+        }
+        .upload-area:active { transform: scale(0.98); }
+        .upload-icon { font-size: 36px; margin-bottom: 10px; display: block; }
+        .upload-text { font-weight: 600; color: var(--primary); font-size: 16px; }
+        .upload-sub { font-size: 12px; color: #94a3b8; margin-top:5px; }
+        input[type="file"] { display: none; }
+
+        /* 2. Selected Files Layout (Horizontal Scroll) */
+        .preview-grid {
+            display: flex;
+            overflow-x: auto;
+            gap: 12px;
+            padding: 5px 2px 15px 2px;
+            margin-bottom: 20px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            min-height: 10px; 
+        }
+
+        .preview-grid::-webkit-scrollbar { height: 6px; }
+        .preview-grid::-webkit-scrollbar-track { background: transparent; }
+        .preview-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .file-card {
+            flex: 0 0 110px;
+            width: 110px;
+            scroll-snap-align: start;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 5px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .file-icon { font-size: 28px; margin-bottom: 5px; color: #94a3b8; }
+        .file-name {
+            font-size: 11px; font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            width: 90%; margin-bottom: 2px;
+        }
+        .file-size { font-size: 10px; color: #64748b; margin-bottom: 8px; }
+
+        .view-btn {
+            background: transparent; border: 1px solid var(--primary);
+            color: var(--primary); border-radius: 4px;
+            padding: 4px 10px; font-size: 10px; cursor: pointer; width: 80%;
+        }
+        .remove-btn {
+            position: absolute; top: -6px; right: -6px;
+            background: #ef4444; color: white; border: none;
+            border-radius: 50%; width: 22px; height: 22px;
+            cursor: pointer; font-size: 14px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 5;
+        }
+
+        /* Controls Section */
+        .controls { background: var(--surface); padding: 20px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: center; }
+        .info-text { color: #64748b; font-size: 14px; line-height: 1.5; }
+
+        /* Main Action Button */
+        .action-btn {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, var(--primary), #2563eb);
+            color: white; border: none; border-radius: 50px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(59,130,246,0.3);
+            transition: transform 0.1s;
+        }
+        .action-btn:active { transform: scale(0.98); }
+
+        /* Secondary Button (View/Convert More) */
+        .secondary-btn {
+            width: 100%; padding: 12px;
+            background: transparent; border: 1px solid #cbd5e1;
+            color: #64748b; border-radius: 50px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* Text Button (For "View PDF") */
+        .text-btn {
+            background: transparent; border: none;
+            color: var(--primary); font-weight: 700; font-size: 15px;
+            cursor: pointer; margin: 10px 0 15px 0;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .text-btn:hover { text-decoration: underline; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .modal-box {
+            background: white; width: 90%; max-width: 400px;
+            border-radius: 16px; padding: 25px; max-height: 85vh;
+            display: flex; flex-direction: column; position: relative; text-align: center;
+        }
+
+        /* Progress Bar */
+        .progress-container { width: 100%; margin: 15px 0; }
+        .progress-track { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
+        .progress-text { text-align: center; font-size: 12px; color: #64748b; margin-top: 5px; }
+
+        /* Success State */
+        .success-icon { font-size: 50px; margin-bottom: 10px; display: block; }
+        .success-title { font-size: 20px; font-weight: 700; color: #16a34a; margin-bottom: 5px; }
+        .success-desc { color: #64748b; font-size: 14px; margin-bottom: 5px; }
+
+        /* Image Viewer */
+        .viewer-wrapper { text-align: center; position: relative; width: 100%; }
+        .viewer-img { max-width: 100%; max-height: 70vh; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        .viewer-close {
+            position: absolute; top: -40px; right: 0; color: white;
+            font-size: 28px; cursor: pointer; font-weight: bold; background: none; border: none;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Image to PDF Converter</h2>
+        <p>Merge multiple images into a single PDF document.</p>
+    </div>
+
+    <!-- Upload Area -->
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-icon">📄</span>
+        <div class="upload-text">Tap to Select Images</div>
+        <div class="upload-sub">Supports JPG, PNG</div>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*" onchange="handleSelection(this)">
+
+    <!-- Selected Files Horizontal Scroll -->
+    <div id="previewGrid" class="preview-grid" style="display:none;"></div>
+
+    <div class="controls">
+        <div class="info-text">
+            <strong>Ready to Convert?</strong><br>
+            Images will be automatically centered and scaled to fit A4 pages.
+        </div>
+    </div>
+
+    <button class="action-btn" onclick="startConversion()">Convert to PDF</button>
+</div>
+
+<!-- Progress Modal -->
+<div id="loadingModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="margin:0 0 10px 0;">Generating PDF...</h3>
+        <div class="progress-container">
+            <div class="progress-track"><div id="pFill" class="progress-fill"></div></div>
+            <div id="pText" class="progress-text">0%</div>
+        </div>
+        <div style="font-size:12px; color:#94a3b8;">Processing images...</div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div id="resultModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="success-icon">✅</div>
+        <div class="success-title">PDF Created!</div>
+        <div class="success-desc">Your images have been successfully merged.</div>
+        
+        <!-- View Button -->
+        <button id="viewPdfBtn" class="text-btn">👁️ View PDF</button>
+
+        <!-- Download Button -->
+        <button class="action-btn" id="dlBtn">Download PDF</button>
+        
+        <!-- Restart Button -->
+        <button class="secondary-btn" onclick="location.reload()">Convert More</button>
+    </div>
+</div>
+
+<!-- Custom Alert Modal -->
+<div id="alertModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 320px; padding: 30px;">
+        <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+        <h3 style="margin:0 0 10px 0;">Notice</h3>
+        <p id="alertMsg" style="color:#64748b; margin-bottom:20px; font-size:14px;"></p>
+        <button class="action-btn" onclick="closeAlert()">OK</button>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div id="imageViewerModal" class="modal-overlay" onclick="closeViewer()">
+    <div class="viewer-wrapper" onclick="event.stopPropagation()">
+        <button class="viewer-close" onclick="closeViewer()">&times;</button>
+        <img id="viewerImage" class="viewer-img" src="">
+        <div id="viewerName" style="color:white; margin-top:10px; font-size:14px;"></div>
+    </div>
+</div>
+
+<script>
+    let selectedFiles = [];
+
+    const formatSize = b => {
+        if(b >= 1024*1024) return (b / (1024*1024)).toFixed(2) + ' MB';
+        return (b / 1024).toFixed(1) + ' KB';
+    };
+
+    // Custom Alert Logic
+    function showAlert(msg) {
+        document.getElementById('alertMsg').innerText = msg;
+        document.getElementById('alertModal').classList.add('active');
+    }
+    function closeAlert() {
+        document.getElementById('alertModal').classList.remove('active');
+    }
+
+    // 1. Handle Selection
+    function handleSelection(input) {
+        if(input.files.length === 0) return;
+        selectedFiles = [...selectedFiles, ...Array.from(input.files)];
+        renderGrid();
+        input.value = ''; 
+    }
+
+    // 2. Render Horizontal Grid
+    function renderGrid() {
+        const grid = document.getElementById('previewGrid');
+        grid.innerHTML = ''; 
+
+        if(selectedFiles.length === 0) {
+            grid.style.display = 'none';
+            return;
+        }
+        grid.style.display = 'flex';
+
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'file-card';
+            div.innerHTML = `
+                <button class="remove-btn" onclick="removeFile(${index})">×</button>
+                <div class="file-icon">🖼️</div>
+                <div class="file-name">${index + 1}. ${file.name}</div>
+                <div class="file-size">${formatSize(file.size)}</div>
+                <button class="view-btn" onclick="openViewer(${index})">View</button>
+            `;
+            grid.appendChild(div);
+        });
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        renderGrid();
+    }
+
+    // 3. Viewer Logic
+    function openViewer(index) {
+        if(index >= selectedFiles.length) return;
+        const file = selectedFiles[index];
+        const url = URL.createObjectURL(file);
+        document.getElementById('viewerImage').src = url;
+        document.getElementById('viewerName').innerText = file.name;
+        document.getElementById('imageViewerModal').classList.add('active');
+    }
+
+    function closeViewer() {
+        document.getElementById('imageViewerModal').classList.remove('active');
+        setTimeout(() => { document.getElementById('viewerImage').src = ""; }, 200);
+    }
+
+    // 4. PDF Generation Logic
+    async function startConversion() {
+        if(selectedFiles.length === 0) return showAlert("Please select images first!");
+        
+        document.getElementById('loadingModal').classList.add('active');
+        const pFill = document.getElementById('pFill');
+        const pText = document.getElementById('pText');
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        const pageWidth = 210; 
+        const pageHeight = 297; 
+        const margin = 10;
+        const maxWidth = pageWidth - (margin * 2);
+        const maxHeight = pageHeight - (margin * 2);
+
+        const total = selectedFiles.length;
+        const fileName = 'converted_images.pdf';
+
+        try {
+            for(let i=0; i<total; i++) {
+                const pct = Math.round(((i) / total) * 100);
+                pFill.style.width = pct + '%';
+                pText.innerText = `Processing page ${i+1} of ${total}`;
+                
+                await new Promise(r => setTimeout(r, 50)); 
+
+                const imgData = await readFileAsDataURL(selectedFiles[i]);
+                const dims = await getImageDimensions(imgData);
+
+                if (i > 0) doc.addPage();
+
+                let w = dims.width;
+                let h = dims.height;
+                const ratio = w / h;
+
+                if (w > maxWidth) { w = maxWidth; h = w / ratio; }
+                if (h > maxHeight) { h = maxHeight; w = h * ratio; }
+
+                const x = (pageWidth - w) / 2;
+                const y = (pageHeight - h) / 2;
+                
+                const ext = selectedFiles[i].name.split('.').pop().toUpperCase();
+                const type = (ext === 'PNG') ? 'PNG' : 'JPEG';
+                
+                doc.addImage(imgData, type, x, y, w, h);
+            }
+
+            pFill.style.width = '100%';
+            pText.innerText = 'Finalizing...';
+
+            // Generate Blob for Viewing and Downloading
+            const pdfBlob = doc.output('blob');
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+
+            setTimeout(() => {
+                document.getElementById('loadingModal').classList.remove('active');
+                
+                // Configure View Button
+                const viewBtn = document.getElementById('viewPdfBtn');
+                viewBtn.onclick = () => window.open(pdfUrl, '_blank');
+
+                // Configure Download Button
+                const dlBtn = document.getElementById('dlBtn');
+                dlBtn.onclick = () => doc.save(fileName);
+                
+                document.getElementById('resultModal').classList.add('active');
+            }, 500);
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('loadingModal').classList.remove('active');
+            showAlert("Error converting images. Ensure files are valid images.");
+        }
+    }
+
+    function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function getImageDimensions(src) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve({ width: img.width, height: img.height });
+            img.src = src;
+        });
+    }
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PNG to JPEG Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root { --primary: #3b82f6; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --radius: 12px; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; }
+        
+        /* Layout */
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
+        .header { text-align: center; margin-bottom: 25px; }
+        h2 { margin: 0; color: var(--primary); font-size: 24px; }
+        p { color: #64748b; font-size: 14px; margin-top: 5px; }
+
+        /* 1. Upload Box */
+        .upload-area {
+            border: 2px dashed var(--primary);
+            background: #eff6ff;
+            border-radius: var(--radius);
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 20px;
+            user-select: none;
+        }
+        .upload-area:active { transform: scale(0.98); }
+        .upload-icon { font-size: 36px; margin-bottom: 10px; display: block; }
+        .upload-text { font-weight: 600; color: var(--primary); font-size: 16px; }
+        .upload-sub { font-size: 12px; color: #94a3b8; margin-top:5px; }
+        input[type="file"] { display: none; }
+
+        /* 2. Horizontal Scroll Layout */
+        .preview-grid {
+            display: flex;
+            overflow-x: auto;
+            gap: 12px;
+            padding: 5px 2px 15px 2px;
+            margin-bottom: 20px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            min-height: 10px; 
+        }
+        .preview-grid::-webkit-scrollbar { height: 6px; }
+        .preview-grid::-webkit-scrollbar-track { background: transparent; }
+        .preview-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .file-card {
+            flex: 0 0 110px;
+            width: 110px;
+            scroll-snap-align: start;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 5px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .file-icon { font-size: 28px; margin-bottom: 5px; color: #94a3b8; }
+        .file-name {
+            font-size: 11px; font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            width: 90%; margin-bottom: 2px;
+        }
+        .file-size { font-size: 10px; color: #64748b; margin-bottom: 8px; }
+
+        .view-btn {
+            background: transparent; border: 1px solid var(--primary);
+            color: var(--primary); border-radius: 4px;
+            padding: 4px 10px; font-size: 10px; cursor: pointer; width: 80%;
+        }
+        .remove-btn {
+            position: absolute; top: -6px; right: -6px;
+            background: #ef4444; color: white; border: none;
+            border-radius: 50%; width: 22px; height: 22px;
+            cursor: pointer; font-size: 14px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 5;
+        }
+
+        /* Info Box */
+        .info-box { background: var(--surface); padding: 15px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: center; color: #64748b; font-size: 14px; }
+
+        /* Main Action Button */
+        .action-btn {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, var(--primary), #2563eb);
+            color: white; border: none; border-radius: 50px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(59,130,246,0.3);
+            transition: transform 0.1s;
+        }
+        .action-btn:active { transform: scale(0.98); }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .modal-box {
+            background: white; width: 90%; max-width: 450px;
+            border-radius: 16px; padding: 25px; max-height: 85vh;
+            display: flex; flex-direction: column; position: relative;
+        }
+
+        /* Results List */
+        .results-list { overflow-y: auto; margin: 15px 0; border-top: 1px solid var(--border); }
+        .result-item {
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border); padding: 12px 0; gap: 10px;
+        }
+        .result-info { font-size: 13px; flex: 1; overflow: hidden; }
+        
+        /* Rename Input Style */
+        .filename-input {
+            width: 95%;
+            padding: 5px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+            color: #1e293b;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .filename-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+        }
+
+        .size-arrow { color: #94a3b8; margin: 0 4px; }
+        .size-final { color: #16a34a; font-weight: 700; }
+        
+        .dl-mini-btn {
+            background: var(--primary); color: white; border: none;
+            padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;
+        }
+
+        /* Progress Bar */
+        .progress-container { width: 100%; margin: 15px 0; }
+        .progress-track { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
+        .progress-text { text-align: center; font-size: 12px; color: #64748b; margin-top: 5px; }
+
+        /* Image Viewer */
+        .viewer-wrapper { text-align: center; position: relative; width: 100%; }
+        .viewer-img { max-width: 100%; max-height: 70vh; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        .viewer-close {
+            position: absolute; top: -40px; right: 0; color: white;
+            font-size: 28px; cursor: pointer; font-weight: bold; background: none; border: none;
+        }
+
+        /* Custom Alert Styles */
+        .alert-icon { font-size: 40px; margin-bottom: 10px; text-align: center; display: block; }
+        .alert-btns { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>PNG to JPEG Converter</h2>
+        <p>Convert PNG images to JPG/JPEG format.</p>
+    </div>
+
+    <!-- Upload Area -->
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-icon">🔁</span>
+        <div class="upload-text">Tap to Select Images</div>
+        <div class="upload-sub">Files remain on your device</div>
+    </div>
+    <!-- Accepts only PNG -->
+    <input type="file" id="fileInput" multiple accept=".png, image/png" onchange="handleSelection(this)">
+
+    <!-- Selected Files Horizontal Scroll -->
+    <div id="previewGrid" class="preview-grid" style="display:none;"></div>
+
+    <!-- Info Box -->
+    <div class="info-box">
+        Output format: <strong>.jpg</strong>
+    </div>
+
+    <button class="action-btn" onclick="startConversion()">Convert to JPG</button>
+</div>
+
+<!-- Progress Modal -->
+<div id="loadingModal" class="modal-overlay">
+    <div class="modal-box" style="align-items: center; justify-content: center; text-align: center;">
+        <h3 style="margin:0 0 10px 0;">Converting...</h3>
+        <div class="progress-container">
+            <div class="progress-track"><div id="pFill" class="progress-fill"></div></div>
+            <div id="pText" class="progress-text">0%</div>
+        </div>
+        <div style="font-size:12px; color:#94a3b8;">Processing...</div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div id="resultModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="margin:0;">Done!</h3>
+        <p style="font-size:12px; color:#94a3b8; margin:5px 0 0 0;">You can rename files before downloading.</p>
+        <div class="results-list" id="resultsContainer"></div>
+        <button class="action-btn" onclick="closeResults()" style="padding:12px; font-size:14px; background: #64748b; margin-top: auto;">Close</button>
+    </div>
+</div>
+
+<!-- Custom Alert Modal -->
+<div id="alertModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 320px; text-align: center;">
+        <div class="alert-icon">⚠️</div>
+        <h3 id="alertTitle" style="margin:0 0 10px 0;">Notice</h3>
+        <p id="alertMsg" style="color:#64748b; margin:0; font-size:14px; line-height:1.5;"></p>
+        <div class="alert-btns">
+            <button class="action-btn" onclick="closeAlert()" style="padding:10px 25px;">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div id="imageViewerModal" class="modal-overlay" onclick="closeViewer()">
+    <div class="viewer-wrapper" onclick="event.stopPropagation()">
+        <button class="viewer-close" onclick="closeViewer()">&times;</button>
+        <img id="viewerImage" class="viewer-img" src="">
+        <div id="viewerName" style="color:white; margin-top:10px; font-size:14px;"></div>
+    </div>
+</div>
+
+<script>
+    let selectedFiles = [];
+
+    // --- Custom Alert System ---
+    function showAlert(msg) {
+        document.getElementById('alertMsg').innerText = msg;
+        document.getElementById('alertModal').classList.add('active');
+    }
+    function closeAlert() {
+        document.getElementById('alertModal').classList.remove('active');
+    }
+
+    const formatSize = b => {
+        if(b === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(b) / Math.log(1024));
+        return (b / Math.pow(1024, i)).toFixed(2) + ' ' + units[i];
+    };
+
+    // 1. Handle Selection
+    function handleSelection(input) {
+        if(input.files.length === 0) return;
+        const files = Array.from(input.files);
+        
+        // Filter purely to ensure only PNG images are added
+        const validFiles = files.filter(f => f.type === 'image/png');
+        
+        if (validFiles.length < files.length) {
+            showAlert("Only PNG files are supported.");
+        }
+
+        selectedFiles = [...selectedFiles, ...validFiles];
+        renderGrid();
+        input.value = ''; 
+    }
+
+    // 2. Render Horizontal Grid
+    function renderGrid() {
+        const grid = document.getElementById('previewGrid');
+        grid.innerHTML = ''; 
+
+        if(selectedFiles.length === 0) {
+            grid.style.display = 'none';
+            return;
+        }
+        grid.style.display = 'flex'; 
+
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'file-card';
+            div.innerHTML = `
+                <button class="remove-btn" onclick="removeFile(${index})">×</button>
+                <div class="file-icon">📄</div>
+                <div class="file-name">${file.name}</div>
+                <div class="file-size">${formatSize(file.size)}</div>
+                <button class="view-btn" onclick="openViewer(${index})">View</button>
+            `;
+            grid.appendChild(div);
+        });
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        renderGrid();
+    }
+
+    function openViewer(index) {
+        if(index >= selectedFiles.length) return;
+        const file = selectedFiles[index];
+        const url = URL.createObjectURL(file);
+        document.getElementById('viewerImage').src = url;
+        document.getElementById('viewerName').innerText = file.name;
+        document.getElementById('imageViewerModal').classList.add('active');
+    }
+
+    function closeViewer() {
+        document.getElementById('imageViewerModal').classList.remove('active');
+        setTimeout(() => { document.getElementById('viewerImage').src = ""; }, 200);
+    }
+
+    // 3. Conversion Logic (PNG to JPG)
+    async function startConversion() {
+        if(selectedFiles.length === 0) {
+            showAlert("Please select PNG images first.");
+            return;
+        }
+
+        document.getElementById('loadingModal').classList.add('active');
+        const pFill = document.getElementById('pFill');
+        const pText = document.getElementById('pText');
+        
+        const results = [];
+        const total = selectedFiles.length;
+
+        for(let i=0; i<total; i++) {
+            const pct = Math.round(((i) / total) * 100);
+            pFill.style.width = pct + '%';
+            pText.innerText = `Converting ${i+1}/${total}`;
+            await new Promise(r => setTimeout(r, 20)); 
+
+            try {
+                const res = await convertToJpeg(selectedFiles[i]);
+                results.push(res);
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        pFill.style.width = '100%';
+        pText.innerText = 'Finalizing...';
+
+        setTimeout(() => {
+            document.getElementById('loadingModal').classList.remove('active');
+            showResults(results);
+        }, 500);
+    }
+
+    function convertToJpeg(file) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                
+                // --- FIX TRANSPARENCY ---
+                // JPEG does not support transparency. We must fill the background 
+                // with white before drawing the PNG, or transparent areas will turn black.
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw image onto canvas
+                ctx.drawImage(img, 0, 0);
+
+                // Convert canvas to JPEG blob (Quality 0.9)
+                canvas.toBlob((blob) => {
+                    if(!blob) { reject("Conversion failed"); return; }
+                    resolve({
+                        originalName: file.name,
+                        originalSize: file.size,
+                        blob: blob
+                    });
+                }, 'image/jpeg', 0.9); 
+            };
+            img.onerror = reject;
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    function showResults(data) {
+        const container = document.getElementById('resultsContainer');
+        container.innerHTML = '';
+
+        data.forEach((item) => {
+            const row = document.createElement('div');
+            row.className = 'result-item';
+            
+            // Generate default name (original base + .jpg)
+            const lastDotIndex = item.originalName.lastIndexOf('.');
+            const baseName = lastDotIndex !== -1 ? item.originalName.substring(0, lastDotIndex) : item.originalName;
+            const defaultName = `${baseName}.jpg`;
+
+            // Insert Input field for renaming
+            row.innerHTML = `
+                <div class="result-info">
+                    <input type="text" class="filename-input" value="${defaultName}">
+                    <div style="color:#64748b">${formatSize(item.originalSize)} <span class="size-arrow">➝</span> <span class="size-final">${formatSize(item.blob.size)}</span></div>
+                </div>
+                <button class="dl-mini-btn">Download</button>
+            `;
+
+            // Handle Download Click
+            const inputField = row.querySelector('.filename-input');
+            const dlBtn = row.querySelector('.dl-mini-btn');
+
+            dlBtn.onclick = () => {
+                let finalName = inputField.value.trim();
+                // Ensure extension is always .jpg if user deleted it
+                const lowerName = finalName.toLowerCase();
+                if (!lowerName.endsWith('.jpg') && !lowerName.endsWith('.jpeg')) {
+                    finalName += '.jpg';
+                }
+                saveAs(item.blob, finalName);
+            };
+
+            container.appendChild(row);
+        });
+
+        document.getElementById('resultModal').classList.add('active');
+    }
+
+    function closeResults() {
+        document.getElementById('resultModal').classList.remove('active');
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Multi-Image Compressor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --radius: 12px; }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+        
+        /* Layout */
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        h2 { margin: 0; color: var(--primary); }
+
+        /* 1. Upload Box */
+        .upload-area {
+            border: 2px dashed var(--primary);
+            background: #eff6ff;
+            border-radius: var(--radius);
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover { background: #dbeafe; }
+        .upload-icon { font-size: 32px; margin-bottom: 8px; display: block; }
+        .upload-text { font-weight: 600; color: var(--primary); }
+        input[type="file"] { display: none; }
+
+        /* 2. Selected Images Grid */
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .preview-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .file-icon-placeholder {
+            font-size: 32px;
+            margin-bottom: 5px;
+            color: #94a3b8;
+        }
+
+        .preview-info {
+            font-size: 11px;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            font-weight: 600;
+        }
+
+        .view-trigger-btn {
+            margin-top: 8px;
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .view-trigger-btn:hover { background: var(--primary); color: white; }
+
+        .remove-btn {
+            position: absolute; top: -6px; right: -6px;
+            background: #ef4444; color: white; border: none;
+            border-radius: 50%; width: 20px; height: 20px;
+            cursor: pointer; font-size: 12px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10;
+        }
+
+        /* Controls */
+        .controls { background: var(--surface); padding: 20px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .preset-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .preset-btn { flex: 1; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        input[type="number"] { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; }
+
+        /* Main Action Button */
+        .compress-btn {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white; border: none; border-radius: 50px;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(37,99,235,0.3);
+        }
+
+        /* Secondary Button (For Alerts) */
+        .btn-secondary {
+            background: transparent; border: 1px solid #cbd5e1;
+            color: #64748b; padding: 12px 20px; border-radius: 50px;
+            font-weight: 600; cursor: pointer; flex: 1;
+        }
+
+        /* Modals Generic */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: white; width: 90%; max-width: 500px;
+            border-radius: 20px; padding: 25px; max-height: 85vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* Results List */
+        .results-list { overflow-y: auto; margin: 15px 0; padding-right: 5px; }
+        .result-item {
+            display: flex; align-items: center; gap: 10px;
+            border-bottom: 1px solid var(--border);
+            padding: 12px 0;
+        }
+        .result-text { flex: 1; font-size: 14px; }
+        .size-badge { font-size: 12px; color: #64748b; }
+        .size-new { color: #16a34a; font-weight: 700; }
+        .size-skipped { color: #d97706; font-weight: 700; }
+        
+        .dl-btn {
+            background: var(--primary); color: white; border: none;
+            padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;
+        }
+
+        /* Progress Bar */
+        .progress-bar { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin: 15px 0; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+
+        /* Image Viewer Modal */
+        .viewer-box {
+            background: transparent; box-shadow: none;
+            max-width: 95%; height: auto; text-align: center; position: relative;
+        }
+        .viewer-img {
+            max-width: 100%; max-height: 80vh; border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .close-viewer {
+            position: absolute; top: -40px; right: 0;
+            color: white; font-size: 30px; cursor: pointer; font-weight: bold;
+        }
+
+        /* Custom Alert Styles */
+        .alert-icon { font-size: 40px; margin-bottom: 10px; text-align: center; display: block; }
+        .alert-btns { display: flex; gap: 10px; margin-top: 20px; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Reduce Image Size</h2>
+    </div>
+
+    <!-- 1. Upload Layout Box -->
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-icon">📂</span>
+        <div class="upload-text">Click to Add Images</div>
+        <div style="font-size: 12px; color: #94a3b8; margin-top:5px;">Images hidden by default</div>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*" onchange="handleSelection(this)">
+
+    <!-- 2. Selected Images Grid -->
+    <div id="previewGrid" class="preview-grid"></div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <label style="font-weight:600; display:block; margin-bottom:10px;">Target File Size (KB)</label>
+        <div class="preset-row">
+            <button class="preset-btn" onclick="setPreset(50, this)">50KB</button>
+            <button class="preset-btn active" onclick="setPreset(100, this)">100KB</button>
+            <button class="preset-btn" onclick="setPreset(200, this)">200KB</button>
+            <button class="preset-btn" onclick="setPreset(500, this)">500KB</button>
+        </div>
+        <input type="number" id="targetSize" value="100" placeholder="Custom size in KB">
+    </div>
+
+    <button class="compress-btn" onclick="startCompression()">Compress & Download</button>
+</div>
+
+<!-- Progress Modal -->
+<div id="loadingModal" class="modal-overlay">
+    <div class="modal-box" style="text-align: center; max-width: 350px;">
+        <h3>Processing...</h3>
+        <div class="progress-bar"><div id="pFill" class="progress-fill"></div></div>
+        <div id="pText">0%</div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div id="resultModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="margin:0;">Compression Results</h3>
+        <div class="results-list" id="resultsContainer"></div>
+        <button class="compress-btn" onclick="location.reload()" style="padding:12px; font-size:14px; background: #64748b;">Close & Clear</button>
+    </div>
+</div>
+
+<!-- Custom Alert Modal -->
+<div id="alertModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 320px; text-align: center;">
+        <div class="alert-icon">⚠️</div>
+        <h3 id="alertTitle" style="margin:0 0 10px 0;">Notice</h3>
+        <p id="alertMsg" style="color:#64748b; margin:0; font-size:14px; line-height:1.5;"></p>
+        <div id="alertButtons" class="alert-btns"></div>
+    </div>
+</div>
+
+<!-- Single Image Viewer Modal -->
+<div id="imageViewerModal" class="modal-overlay" onclick="closeViewer()">
+    <div class="viewer-box" onclick="event.stopPropagation()">
+        <div class="close-viewer" onclick="closeViewer()">&times;</div>
+        <img id="viewerImage" class="viewer-img" src="">
+    </div>
+</div>
+
+<script>
+    let selectedFiles = [];
+
+    const formatSize = b => (b/1024).toFixed(1) + ' KB';
+
+    // --- Custom Alert Logic ---
+    function showAlert(msg) {
+        return new Promise(resolve => {
+            const modal = document.getElementById('alertModal');
+            document.getElementById('alertMsg').innerText = msg;
+            
+            const btnContainer = document.getElementById('alertButtons');
+            btnContainer.innerHTML = '';
+            
+            const okBtn = document.createElement('button');
+            okBtn.className = 'compress-btn';
+            okBtn.innerText = 'OK';
+            okBtn.onclick = () => {
+                modal.classList.remove('active');
+                resolve();
+            };
+            
+            btnContainer.appendChild(okBtn);
+            modal.classList.add('active');
+        });
+    }
+
+    function showConfirm(msg) {
+        return new Promise(resolve => {
+            const modal = document.getElementById('alertModal');
+            document.getElementById('alertMsg').innerText = msg;
+            
+            const btnContainer = document.getElementById('alertButtons');
+            btnContainer.innerHTML = '';
+            
+            // Cancel Button
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn-secondary';
+            cancelBtn.innerText = 'Cancel';
+            cancelBtn.onclick = () => {
+                modal.classList.remove('active');
+                resolve(false);
+            };
+
+            // Yes Button
+            const yesBtn = document.createElement('button');
+            yesBtn.className = 'compress-btn';
+            yesBtn.innerText = 'Continue';
+            yesBtn.onclick = () => {
+                modal.classList.remove('active');
+                resolve(true);
+            };
+            
+            btnContainer.appendChild(cancelBtn);
+            btnContainer.appendChild(yesBtn);
+            modal.classList.add('active');
+        });
+    }
+
+    // 1. Handle Selection
+    function handleSelection(input) {
+        if(input.files.length === 0) return;
+        const newFiles = Array.from(input.files);
+        selectedFiles = [...selectedFiles, ...newFiles];
+        renderGrid();
+        input.value = '';
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('previewGrid');
+        grid.innerHTML = ''; 
+
+        selectedFiles.forEach((file, index) => {
+            const url = URL.createObjectURL(file);
+            const div = document.createElement('div');
+            div.className = 'preview-card';
+            div.innerHTML = `
+                <button class="remove-btn" onclick="removeFile(${index})">×</button>
+                <div class="file-icon-placeholder">📄</div>
+                <div class="preview-info" title="${file.name}">${file.name}</div>
+                <div class="preview-info" style="color:#64748b">${formatSize(file.size)}</div>
+                <button class="view-trigger-btn" onclick="openViewer('${url}')">View</button>
+            `;
+            grid.appendChild(div);
+        });
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        renderGrid();
+    }
+
+    function setPreset(val, btn) {
+        document.getElementById('targetSize').value = val;
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    function openViewer(url) {
+        document.getElementById('viewerImage').src = url;
+        document.getElementById('imageViewerModal').classList.add('active');
+    }
+
+    function closeViewer() {
+        document.getElementById('imageViewerModal').classList.remove('active');
+        document.getElementById('viewerImage').src = '';
+    }
+
+    // 2. Compression Logic with Check
+    async function startCompression() {
+        if(selectedFiles.length === 0) {
+            await showAlert("Please select images first!");
+            return;
+        }
+        
+        const targetKB = parseInt(document.getElementById('targetSize').value);
+        if(!targetKB) {
+            await showAlert("Enter target size");
+            return;
+        }
+
+        // CHECK: Identify files smaller than target
+        const smallFiles = selectedFiles.filter(f => (f.size / 1024) <= targetKB);
+        if (smallFiles.length > 0) {
+            const confirmMsg = `ALERT: ${smallFiles.length} image(s) are already smaller than ${targetKB} KB.\n\nThey will be skipped (original kept) to prevent quality loss.`;
+            // Using Custom Confirm Modal
+            const shouldContinue = await showConfirm(confirmMsg);
+            if(!shouldContinue) return;
+        }
+
+        document.getElementById('loadingModal').classList.add('active');
+        const pFill = document.getElementById('pFill');
+        const pText = document.getElementById('pText');
+        
+        const results = [];
+        const total = selectedFiles.length;
+
+        for(let i=0; i<total; i++) {
+            const pct = Math.round(((i+1)/total)*100);
+            pFill.style.width = pct+'%';
+            pText.innerText = `${i+1}/${total}`;
+
+            try {
+                const res = await compressImage(selectedFiles[i], targetKB);
+                results.push(res);
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        setTimeout(() => {
+            document.getElementById('loadingModal').classList.remove('active');
+            showResultsModal(results);
+        }, 500);
+    }
+
+    async function compressImage(file, targetKB) {
+        return new Promise(async (resolve) => {
+            const fileSizeKB = file.size / 1024;
+            
+            // SKIP LOGIC: If file is already smaller than target
+            if(fileSizeKB <= targetKB) {
+                resolve({
+                    original: file,
+                    compressed: file, // Return original as result
+                    url: URL.createObjectURL(file),
+                    skipped: true // Flag to identify in UI
+                });
+                return;
+            }
+
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            await new Promise(r => img.onload = r);
+
+            const canvas = document.createElement('canvas');
+            let width = img.width; 
+            let height = img.height;
+            if(width > 2000) { 
+                const scale = 2000/width;
+                width = 2000; height *= scale;
+            }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            let q = 0.9, blob;
+            for(let k=0; k<8; k++) {
+                blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', q));
+                if(blob.size/1024 <= targetKB) break;
+                q -= 0.1;
+            }
+
+            resolve({
+                original: file,
+                compressed: blob,
+                url: URL.createObjectURL(blob),
+                skipped: false
+            });
+        });
+    }
+
+    // 3. Render Results
+    function showResultsModal(data) {
+        const container = document.getElementById('resultsContainer');
+        container.innerHTML = '';
+
+        data.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'result-item';
+            
+            const origSize = formatSize(item.original.size);
+            const newSize = formatSize(item.compressed.size);
+            
+            // Logic to show "Skipped" text if applicable
+            let sizeHtml = '';
+            if(item.skipped) {
+                sizeHtml = `<div class="size-badge">${origSize} ➝ <span class="size-skipped">Original Kept</span></div>`;
+            } else {
+                sizeHtml = `<div class="size-badge">${origSize} ➝ <span class="size-new">${newSize}</span></div>`;
+            }
+
+            row.innerHTML = `
+                <div class="result-text">
+                    <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;">${item.original.name}</div>
+                    ${sizeHtml}
+                    <button class="view-trigger-btn" style="width:auto; display:inline-block; margin-top:4px;" onclick="openViewer('${item.url}')">View Result</button>
+                </div>
+                <button class="dl-btn">Download</button>
+            `;
+
+            row.querySelector('.dl-btn').onclick = () => {
+                saveAs(item.compressed, (item.skipped ? '' : 'min_') + item.original.name);
+            };
+
+            container.appendChild(row);
+        });
+
+        document.getElementById('resultModal').classList.add('active');
+    }
+</script>
+
+</body>
+</html>
