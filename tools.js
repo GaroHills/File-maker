@@ -13,7 +13,7 @@ var manualToolList = [
         "url": "increase_img_size.html"
     },
     {
-        "name": "IMG TO PDF",
+        "name": "IMG TO PD",
         "url": "img_to_pdf.html"
     },
     {
