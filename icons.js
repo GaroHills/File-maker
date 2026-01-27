@@ -298,4 +298,38 @@ const toolIcons = {
   </text>
 
 </svg>`
+
+"idcard_cropper" '<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- ID Card Base -->
+  <rect x="14" y="20" width="100" height="72" rx="10" ry="10"
+        fill="#ffffff" stroke="#1e88e5" stroke-width="4"/>
+
+  <!-- Profile Image Circle -->
+  <circle cx="46" cy="48" r="10" fill="#1e88e5"/>
+
+  <!-- Name Lines -->
+  <rect x="64" y="42" width="34" height="6" rx="3" fill="#1e88e5"/>
+  <rect x="64" y="52" width="24" height="6" rx="3" fill="#90caf9"/>
+
+  <!-- Center Image Icon -->
+  <rect x="38" y="58" width="52" height="24" rx="4"
+        fill="#e3f2fd" stroke="#1e88e5" stroke-width="2"/>
+  <circle cx="52" cy="68" r="4" fill="#1e88e5"/>
+  <path d="M46 78l8-8 6 6 10-10 10 12"
+        fill="none" stroke="#1e88e5" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Crop Box (Joined Corner Lines) -->
+  <!-- Top Left -->
+  <path d="M28 26h10M28 26v10" stroke="#0d47a1" stroke-width="3" stroke-linecap="round"/>
+  <!-- Top Right -->
+  <path d="M100 26h-10M100 26v10" stroke="#0d47a1" stroke-width="3" stroke-linecap="round"/>
+  <!-- Bottom Left -->
+  <path d="M28 86h10M28 86v-10" stroke="#0d47a1" stroke-width="3" stroke-linecap="round"/>
+  <!-- Bottom Right -->
+  <path d="M100 86h-10M100 86v-10" stroke="#0d47a1" stroke-width="3" stroke-linecap="round"/>
+
+</svg>',
+    
 };
