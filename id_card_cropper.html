@@ -87,8 +87,17 @@
             border-radius: var(--radius);
             border: 1px solid var(--border);
         }
-        .info-section h3 { margin-top: 0; color: var(--text); font-size: 16px; }
-        .info-section ul { padding-left: 20px; color: #64748b; line-height: 1.6; font-size: 14px; margin: 0; }
+        .info-section h3 { margin-top: 0; color: var(--text); font-size: 18px; margin-bottom: 10px; }
+        .info-section ul { padding-left: 20px; color: #64748b; line-height: 1.6; font-size: 14px; margin: 0 0 15px 0; }
+        .info-section li { margin-bottom: 8px; }
+        
+        .tutorial-img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: block;
+        }
 
         /* Modals */
         .modal-overlay {
@@ -159,14 +168,15 @@
 
     <button id="cropBtn" class="compress-btn" onclick="cropAndDownload()" disabled style="background:#cbd5e1; cursor: not-allowed;">Crop & Download</button>
 
-    <!-- Info Section -->
+    <!-- NEW: Info / How to Use Section -->
     <div class="info-section">
-        <h3>How to use</h3>
+        <h3>How to Use</h3>
         <ul>
-            <li><strong>Gestures:</strong> Use one finger to drag, two fingers to zoom/rotate.</li>
-            <li><strong>Auto-Snap:</strong> The image vibrates and snaps when perfectly centered.</li>
-            <li><strong>Red Box:</strong> Keep your document inside the illuminated box.</li>
+            <li><strong>Select Preset:</strong> Choose the ID type (Pan, Aadhar, Voter, Passport) from the buttons.</li>
+            <li><strong>Adjust Image:</strong> Drag to move and pinch (or use the slider) to zoom the image into the illuminated box.</li>
+            <li><strong>Crop:</strong> Click "Crop & Download" to get your perfectly sized ID photo.</li>
         </ul>
+        <img src="https://raw.githubusercontent.com/mrbtool/File-maker/refs/heads/main/Picsart_26-01-28_00-35-29-724.jpg" alt="How to use the ID card cropper" class="tutorial-img">
     </div>
 </div>
 
