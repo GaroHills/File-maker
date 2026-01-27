@@ -124,6 +124,26 @@
             font-weight: 600; cursor: pointer; flex: 1;
         }
 
+        /* Info / How to use Section */
+        .info-section {
+            margin-top: 40px;
+            background: var(--surface);
+            padding: 25px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+        .info-section h3 { margin-top: 0; color: var(--text); font-size: 18px; margin-bottom: 15px; }
+        .info-section ol { padding-left: 20px; color: #64748b; line-height: 1.6; font-size: 14px; }
+        .info-section li { margin-bottom: 10px; }
+        .tutorial-img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+            display: block;
+        }
+
         /* Modals */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -211,6 +231,18 @@
     </div>
 
     <button class="action-btn" onclick="startProcessing()">Increase Size & Download</button>
+
+    <!-- NEW: How to Use Section -->
+    <div class="info-section">
+        <h3>How to Increase Image Size</h3>
+        <ol>
+            <li><strong>Upload Images:</strong> Tap the folder icon to select the photos from your gallery that you want to resize.</li>
+            <li><strong>Set Target Size:</strong> Click a preset button (e.g., 1 MB) or manually enter a specific size (KB or MB) in the box.</li>
+            <li><strong>Process:</strong> Click the "Increase Size & Download" button. The tool adds safe, invisible data to your file to reach the target size without changing how the image looks.</li>
+        </ol>
+        <img src="https://blogger.googleusercontent.com/img/a/AVvXsEjeCHMUxbR46-6yiGIBPpZneyBUeN0KUPWNk8E9mWEe63SdCUMlrXSuz5fj11Bl9od1icyfmsQQs6Q8h-sdNkgVyWaLb8l2jngFQCbIe4EByvwuaNtgphlg58blel4jr3lpeln09zE8k4lE9V0Jd5HjZCnGGlKzgMcwDxKAaKghu9UevFeiXYcMPXGEOtTn" alt="How to use the image size increaser" class="tutorial-img">
+    </div>
+
 </div>
 
 <!-- Progress Modal -->
