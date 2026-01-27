@@ -299,7 +299,7 @@ const toolIcons = {
 
 </svg>`
 
-"idcard_cropper" '<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+"idcard_cropper": '<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
 
   <!-- ID Card Base -->
   <rect x="14" y="20" width="100" height="72" rx="10" ry="10"
