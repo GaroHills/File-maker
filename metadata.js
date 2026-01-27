@@ -50,5 +50,10 @@ var toolMetadata = {
         category: "Image Format",
         tags: ["Super fast", "2026", "NEW"],
         color: "#00a86b"
+    },
+    "idcard_cropper": {
+        category: "Card cropper tools",
+        tags: ["Super fast", "2026", "NEW"],
+        color: "#00a86b"
     }
 };
