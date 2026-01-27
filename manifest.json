@@ -1,6 +1,6 @@
 {
-  "name": "Pro File Tools",
-  "short_name": "ProTools",
+  "name": "MRB Tools",
+  "short_name": "Mrbtools",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f8f9fc",
