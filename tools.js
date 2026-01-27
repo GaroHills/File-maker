@@ -37,7 +37,7 @@ var manualToolList = [
         "url": "img_resize.html"
     },
     {
-        "name": "ID CARD_CROPPER",
+        "name": "ID_CARD_CROPPER",
         "url": "idcard_cropper.html",
     }
     // When you paste a new tool here and save the file on your server,
