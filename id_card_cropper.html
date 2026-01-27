@@ -3,103 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ID Card Cropper & Resizer</title>
+    <title>Pro ID Cropper</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --radius: 12px; }
-        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--text); overscroll-behavior: none; }
-        
-        /* Layout */
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
-        h2 { margin: 0; color: var(--primary); }
-        .subtitle { font-size: 14px; color: #64748b; margin-top: 5px; }
-
-        /* 1. Upload Box */
-        .upload-area {
-            border: 2px dashed var(--primary);
-            background: #eff6ff;
-            border-radius: var(--radius);
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-bottom: 20px;
+        :root { 
+            --primary: #2563eb; 
+            --bg: #f8fafc; 
+            --surface: #ffffff; 
+            --text: #0f172a; 
+            --text-light: #64748b;
+            --radius: 16px; 
         }
-        .upload-area:hover { background: #dbeafe; }
-        .upload-icon { font-size: 28px; margin-bottom: 5px; display: block; }
-        .upload-text { font-weight: 600; color: var(--primary); }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; overscroll-behavior: none; }
+        
+        .container { max-width: 600px; margin: 0 auto; padding: 12px; }
+
+        /* Header Layout */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .app-title { font-size: 16px; font-weight: 800; color: var(--text); margin: 0; }
+        
+        /* Compact Upload Button */
+        .mini-upload-btn {
+            background: var(--surface);
+            border: 1px solid #e2e8f0;
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: 0.2s;
+        }
+        .mini-upload-btn:active { transform: scale(0.96); background: #f8fafc; }
         input[type="file"] { display: none; }
 
-        /* 2. Editor Workspace */
-        .editor-container {
-            background: #1e293b; /* Dark background for better contrast */
-            border-radius: var(--radius);
-            overflow: hidden;
+        /* Sliding Switch */
+        .switch-container {
             position: relative;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            display: none; /* Hidden until file loaded */
-            touch-action: none; /* Prevents scrolling while editing */
+            background: #e2e8f0;
+            border-radius: 50px;
+            padding: 3px;
+            display: flex;
+            margin-bottom: 10px;
+            height: 36px;
+            box-sizing: border-box;
         }
-        
-        canvas {
-            display: block;
+        .switch-bg {
+            position: absolute;
+            left: 3px; top: 3px; bottom: 3px;
+            width: calc(50% - 3px);
+            background: white;
+            border-radius: 50px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            z-index: 1;
+        }
+        .switch-container.mode-perspective .switch-bg { transform: translateX(100%); }
+
+        .switch-option {
+            flex: 1; position: relative; z-index: 2; text-align: center;
+            line-height: 30px; font-size: 12px; font-weight: 600;
+            color: var(--text-light); cursor: pointer; transition: color 0.3s; user-select: none;
+        }
+        .switch-option.active { color: var(--text); }
+
+        /* Preset Scroll Bar */
+        .preset-bar {
+            overflow-x: auto; white-space: nowrap; padding-bottom: 5px; margin-bottom: 10px;
+            scrollbar-width: none; display: block; transition: opacity 0.3s ease;
+        }
+        .preset-bar.hidden { display: none; }
+        .preset-bar::-webkit-scrollbar { display: none; }
+
+        .preset-chip {
+            display: inline-block; padding: 6px 14px; background: var(--surface);
+            border: 1px solid #e2e8f0; border-radius: 50px; font-size: 12px;
+            font-weight: 600; color: var(--text-light); margin-right: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .preset-chip.active {
+            background: var(--primary); color: white; border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+        }
+
+        /* Editor Area */
+        .editor-wrapper {
+            background: #1e293b; border-radius: var(--radius); overflow: hidden;
+            position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            margin-bottom: 10px; display: none; touch-action: none;
+            /* Max height 45% of viewport */
+            max-height: 45vh; 
             width: 100%;
-            height: auto;
-            cursor: grab;
+            display: flex; 
+            justify-content: center;
+            align-items: center;
         }
-        canvas:active { cursor: grabbing; }
-
-        /* Controls */
-        .controls { background: var(--surface); padding: 20px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .control-label { font-weight: 600; display: block; margin-bottom: 10px; font-size: 14px; }
+        canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
         
-        .preset-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-        .preset-btn { 
-            flex: 1; padding: 10px; 
-            background: var(--bg); border: 1px solid var(--border); 
-            border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;
-            white-space: nowrap;
-        }
-        .preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-
-        /* Action Buttons */
-        .compress-btn {
-            width: 100%; padding: 16px;
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white; border: none; border-radius: 50px;
-            font-size: 16px; font-weight: 700; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(37,99,235,0.3);
+        .empty-state {
+            background: var(--surface); border-radius: var(--radius); padding: 30px 20px;
+            text-align: center; border: 2px dashed #cbd5e1; color: var(--text-light); margin-bottom: 10px;
         }
 
-        .btn-secondary {
-            background: transparent; border: 1px solid #cbd5e1;
-            color: #64748b; padding: 10px 20px; border-radius: 50px;
-            font-weight: 600; cursor: pointer; margin-top: 10px; width: 100%;
+        /* Bottom Controls */
+        .slider-box {
+            background: var(--surface); padding: 10px 15px; border-radius: 12px; margin-bottom: 10px;
+            display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-
-        /* Info Section */
-        .info-section {
-            margin-top: 30px;
-            background: var(--surface);
-            padding: 20px;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-        }
-        .info-section h3 { margin-top: 0; color: var(--text); font-size: 18px; margin-bottom: 10px; }
-        .info-section ul { padding-left: 20px; color: #64748b; line-height: 1.6; font-size: 14px; margin: 0 0 15px 0; }
-        .info-section li { margin-bottom: 8px; }
+        input[type=range] { flex:1; accent-color: var(--primary); cursor: pointer; }
         
-        .tutorial-img {
-            width: 100%;
-            height: auto;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            display: block;
+        .zoom-btn {
+            width: 32px; height: 32px; background: #f1f5f9; color: var(--text);
+            border: 1px solid #e2e8f0; border-radius: 8px; font-size: 18px; line-height: 1;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-family: monospace; padding-bottom: 4px;
+        }
+        .zoom-btn:active { background: #e2e8f0; transform: scale(0.95); }
+
+        /* Fine Tune Controls */
+        .fine-tune-box {
+            background: var(--surface); border-radius: 12px; padding: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: none;
+            flex-direction: column; gap: 8px; margin-bottom: 10px;
+        }
+        .corner-row { display: flex; gap: 15px; justify-content: center; }
+        .corner-btn {
+            width: 36px; height: 36px; border-radius: 50%; border: 2px solid #e2e8f0;
+            background: white; color: var(--text-light); font-weight: 700; font-size: 12px;
+            cursor: pointer; transition: 0.2s;
+        }
+        .corner-btn.active {
+            background: var(--primary); color: white; border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+        }
+        
+        .touchpad {
+            background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 10px;
+            height: 70px; 
+            display: flex; align-items: center; justify-content: center;
+            color: #94a3b8; font-size: 12px; font-weight: 600;
+            touch-action: none; cursor: crosshair; user-select: none;
+        }
+        .touchpad:active { background: #e2e8f0; border-color: var(--primary); color: var(--primary); }
+
+        /* Bottom Action Bar */
+        .bottom-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface);
+            padding: 10px 15px; box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+            box-sizing: border-box; display: flex; gap: 10px; z-index: 50; border-top: 1px solid #f1f5f9;
         }
 
-        /* Modals */
+        .crop-btn {
+            flex: 1; background: var(--primary); color: white; border: none;
+            padding: 12px; border-radius: 50px; font-size: 15px; font-weight: 700;
+            cursor: pointer; opacity: 0.5; pointer-events: none; transition: 0.2s;
+        }
+        .crop-btn.ready { opacity: 1; pointer-events: auto; }
+        .crop-btn:active { transform: scale(0.98); }
+
+        /* Feedback Overlay */
+        .alignment-feedback {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            pointer-events: none; color: white; font-weight: bold; font-size: 12px;
+            background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 4px;
+            opacity: 0; transition: opacity 0.2s;
+        }
+
+        /* Modal */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
@@ -107,477 +185,695 @@
         }
         .modal-overlay.active { display: flex; }
         .modal-box {
-            background: white; width: 90%; max-width: 400px;
-            border-radius: 20px; padding: 25px; text-align: center;
+            background: white; width: 85%; max-width: 350px;
+            border-radius: 20px; padding: 20px; text-align: center;
         }
-
-        .result-img {
-            max-width: 100%;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        .result-img { max-width: 100%; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 15px; max-height: 50vh; object-fit: contain; }
+        .btn-secondary {
+            background: transparent; color: var(--text-light); border: none;
+            padding: 10px; font-weight: 600; cursor: pointer; margin-top: 5px; width: 100%;
         }
-
-        /* Snap Guides Overlay (CSS-based visuals if needed, mostly handled in Canvas) */
-        .alignment-feedback {
-            position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            color: white; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            opacity: 0; transition: opacity 0.2s;
-        }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto 10px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h2>ID Card Cropper</h2>
-        <div class="subtitle">Perfect fit for Pan, Aadhar, & Voter IDs</div>
-    </div>
-
-    <!-- Upload Area -->
-    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-        <span class="upload-icon">📷</span>
-        <div class="upload-text">Select Image</div>
-        <div style="font-size: 12px; color: #94a3b8; margin-top:5px;">Supports JPEG, PNG</div>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <h1 class="app-title">ID Cropper</h1>
+        <div class="mini-upload-btn" onclick="document.getElementById('fileInput').click()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"></path></svg>
+            Select
+        </div>
     </div>
     <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
 
+    <!-- Slide Switch -->
+    <div class="switch-container" id="modeSwitch">
+        <div class="switch-bg"></div>
+        <div class="switch-option active" onclick="setMode('standard')">Standard</div>
+        <div class="switch-option" onclick="setMode('perspective')">Perspective</div>
+    </div>
+
+    <!-- PRESET SCROLL BAR -->
+    <div id="presetBar" class="preset-bar">
+        <div class="preset-chip active" onclick="setPreset('pan', this)">Pan Card</div>
+        <div class="preset-chip" onclick="setPreset('aadhar', this)">Aadhar</div>
+        <div class="preset-chip" onclick="setPreset('voter', this)">Voter ID</div>
+        <div class="preset-chip" onclick="setPreset('dl', this)">License</div>
+        <div class="preset-chip" onclick="setPreset('passport', this)">Passport</div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" onclick="document.getElementById('fileInput').click()">
+        Tap "Select" to start
+    </div>
+
     <!-- Editor Canvas -->
-    <div id="editorContainer" class="editor-container">
+    <div id="editorContainer" class="editor-wrapper" style="display:none;">
         <canvas id="cropCanvas"></canvas>
-        <div id="alignMsg" class="alignment-feedback">CENTERED</div>
+        <div id="alignMsg" class="alignment-feedback">CENTER SNAP</div>
     </div>
 
-    <!-- Controls -->
-    <div class="controls" id="controlBox" style="opacity: 0.5; pointer-events: none;">
-        <label class="control-label">Document Type</label>
-        <div class="preset-row">
-            <button class="preset-btn active" onclick="setPreset('pan', this)">Pan Card</button>
-            <button class="preset-btn" onclick="setPreset('aadhar', this)">Aadhar</button>
-            <button class="preset-btn" onclick="setPreset('voter', this)">Voter ID</button>
-            <button class="preset-btn" onclick="setPreset('passport', this)">Passport Photo</button>
+    <!-- Zoom Controls -->
+    <div class="slider-box" id="zoomBox" style="display:none;">
+        <span style="font-size:12px; font-weight:600; color:#64748b; width:40px;">Zoom</span>
+        <button class="zoom-btn" onclick="adjustZoom(-0.1)">−</button>
+        <input type="range" id="zoomSlider" min="0.1" max="3.0" step="0.01" value="1" oninput="manualZoom(this.value)">
+        <button class="zoom-btn" onclick="adjustZoom(0.1)">+</button>
+    </div>
+
+    <!-- FINE TUNE CONTROLS -->
+    <div id="fineTuneControls" class="fine-tune-box">
+        <div class="corner-row">
+            <button class="corner-btn" onclick="selectRemoteCorner(0)">1</button>
+            <button class="corner-btn" onclick="selectRemoteCorner(1)">2</button>
+            <button class="corner-btn" onclick="selectRemoteCorner(3)">4</button>
+            <button class="corner-btn" onclick="selectRemoteCorner(2)">3</button>
         </div>
-        
-        <label class="control-label">Manual Zoom</label>
-        <input type="range" id="zoomSlider" min="0.1" max="3.0" step="0.01" value="1" oninput="manualZoom(this.value)" style="width:100%">
+        <div id="touchPad" class="touchpad">
+            Slide here to fine-tune
+        </div>
     </div>
 
-    <button id="cropBtn" class="compress-btn" onclick="cropAndDownload()" disabled style="background:#cbd5e1; cursor: not-allowed;">Crop & Download</button>
+</div>
 
-    <!-- NEW: Info / How to Use Section -->
-    <div class="info-section">
-        <h3>How to Use</h3>
-        <ul>
-            <li><strong>Select Preset:</strong> Choose the ID type (Pan, Aadhar, Voter, Passport) from the buttons.</li>
-            <li><strong>Adjust Image:</strong> Drag to move and pinch (or use the slider) to zoom the image into the illuminated box.</li>
-            <li><strong>Crop:</strong> Click "Crop & Download" to get your perfectly sized ID photo.</li>
-        </ul>
-        <img src="https://raw.githubusercontent.com/mrbtool/File-maker/refs/heads/main/Picsart_26-01-28_00-35-29-724.jpg" alt="How to use the ID card cropper" class="tutorial-img">
-    </div>
+<!-- Fixed Bottom Bar -->
+<div class="bottom-bar">
+    <button id="cropBtn" class="crop-btn" onclick="processCrop()">Crop & Save</button>
 </div>
 
 <!-- Result Modal -->
 <div id="resultModal" class="modal-overlay">
     <div class="modal-box">
-        <h3 style="margin:0 0 15px 0;">Cropped Successfully!</h3>
-        <img id="finalResult" class="result-img" src="">
-        <div class="preset-row">
-             <button class="compress-btn" onclick="downloadResult()">Save to Device</button>
+        <div id="loadingIndicator" style="display:none;">
+            <div class="spinner"></div>
+            <p style="font-size:14px; color:#64748b">Processing...</p>
         </div>
-        <button class="btn-secondary" onclick="document.getElementById('resultModal').classList.remove('active')">Edit More</button>
+        <div id="resultContent">
+            <h3 style="margin:0 0 10px 0; font-size:16px;">Done!</h3>
+            <img id="finalResult" class="result-img" src="">
+            <button class="crop-btn ready" style="width:100%" onclick="downloadResult()">Download Image</button>
+            <button class="btn-secondary" onclick="closeModal()">Close</button>
+        </div>
     </div>
 </div>
 
 <script>
-    // --- Configuration ---
-    // Ratios (Width / Height)
+    // --- Config ---
     const PRESETS = {
-        pan: { ratio: 1.59, name: "Pan Card" },     // 86mm x 54mm
-        aadhar: { ratio: 1.60, name: "Aadhar Card" },  // 88mm x 55mm
-        voter: { ratio: 1.58, name: "Voter ID" },   // Standard ID
-        passport: { ratio: 0.78, name: "Passport Photo" } // 35mm x 45mm
+        pan: { ratio: 1.59 },
+        aadhar: { ratio: 1.60 },
+        voter: { ratio: 1.58 },
+        dl: { ratio: 1.58 },
+        passport: { ratio: 0.78 }
     };
 
+    let appMode = 'standard'; 
     let currentPreset = 'pan';
     
-    // Canvas & State
     const canvas = document.getElementById('cropCanvas');
     const ctx = canvas.getContext('2d');
     const alignMsg = document.getElementById('alignMsg');
     
     let img = new Image();
     let imgLoaded = false;
-    
-    // Transforms
-    let state = {
-        x: 0, y: 0, scale: 1,
-        isDragging: false,
-        lastX: 0, lastY: 0,
-        // Pinch Zoom
-        initialPinchDist: 0,
-        initialScale: 1
-    };
-
-    // Viewport logic
-    let cropBox = { w: 0, h: 0, x: 0, y: 0 };
     let canvasW, canvasH;
 
-    // Haptics State
-    let isSnappedX = false;
-    let isSnappedY = false;
-
-    // --- Initialization ---
+    // Standard Mode State
+    let stdState = { x: 0, y: 0, scale: 1, lastX: 0, lastY: 0, initialDist: 0, initialScale: 1 };
     
-    function initCanvas() {
-        const container = document.getElementById('editorContainer');
-        canvasW = container.clientWidth;
-        canvasH = canvasW * 0.8; // Aspect ratio of the workspace
-        
-        // High DPI scaling
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = canvasW * dpr;
-        canvas.height = canvasH * dpr;
-        canvas.style.width = canvasW + 'px';
-        canvas.style.height = canvasH + 'px';
-        ctx.scale(dpr, dpr);
-        
-        updateCropBox();
-    }
+    // Perspective Mode State
+    let lastPerspZoom = 1.0;
+    let imgDisplayRect = { x:0, y:0, w:0, h:0, scale:1 }; // Represents current screen draw rect
+    let corners = []; // Represents current screen corner positions
 
-    function updateCropBox() {
-        // Calculate crop box size based on preset ratio
-        const margin = 40;
-        const maxW = canvasW - (margin * 2);
-        const maxH = canvasH - (margin * 2);
+    let cropBox = { w: 0, h: 0, x: 0, y: 0 };
+    let isDragging = false;
+    let isPanningPersp = false;
+    let isSnappedX = false, isSnappedY = false;
+    
+    // Drag/Touch Vars
+    let lastX = 0, lastY = 0;
+
+    let activeCorner = -1; // For Canvas touch
+    let activeRemoteCorner = -1; // For Touchpad
+
+    // --- Mode Switching ---
+    function setMode(mode) {
+        appMode = mode;
+        const container = document.getElementById('modeSwitch');
+        const opts = document.querySelectorAll('.switch-option');
+        const presetBar = document.getElementById('presetBar');
+        const ftControls = document.getElementById('fineTuneControls');
         
-        const ratio = PRESETS[currentPreset].ratio;
-        
-        let boxW = maxW;
-        let boxH = boxW / ratio;
-        
-        if (boxH > maxH) {
-            boxH = maxH;
-            boxW = boxH * ratio;
+        if (mode === 'perspective') {
+            container.classList.add('mode-perspective');
+            opts[0].classList.remove('active');
+            opts[1].classList.add('active');
+            presetBar.classList.add('hidden'); 
+            ftControls.style.display = 'flex';
+            
+            // Reset remote selection
+            activeRemoteCorner = -1;
+            updateRemoteButtons();
+            
+            // Reset Zoom Slider for perspective
+            if(imgLoaded) {
+                initPerspective();
+                draw();
+            }
+        } else {
+            container.classList.remove('mode-perspective');
+            opts[0].classList.add('active');
+            opts[1].classList.remove('active');
+            presetBar.classList.remove('hidden'); 
+            ftControls.style.display = 'none';
+            
+            if(imgLoaded) {
+                initStandard();
+                draw();
+            }
         }
-        
-        cropBox = {
-            w: boxW,
-            h: boxH,
-            x: (canvasW - boxW) / 2,
-            y: (canvasH - boxH) / 2
-        };
-        draw();
     }
-
-    // --- File Handling ---
 
     function handleFile(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                img.src = e.target.result;
-            }
+            reader.onload = e => { img.src = e.target.result; };
             reader.readAsDataURL(input.files[0]);
         }
     }
 
     img.onload = function() {
         imgLoaded = true;
-        
-        // Unhide and Enable controls
-        document.getElementById('editorContainer').style.display = 'block';
-        document.getElementById('controlBox').style.opacity = '1';
-        document.getElementById('controlBox').style.pointerEvents = 'auto';
-        
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('editorContainer').style.display = 'flex';
+        document.getElementById('zoomBox').style.display = 'flex';
+        setMode(appMode);
         const btn = document.getElementById('cropBtn');
-        btn.disabled = false;
-        btn.style.background = "linear-gradient(135deg, #2563eb, #1d4ed8)";
-        btn.style.cursor = "pointer";
-
-        initCanvas();
-        
-        // Fit image to crop box initially
-        const scaleW = cropBox.w / img.width;
-        const scaleH = cropBox.h / img.height;
-        state.scale = Math.max(scaleW, scaleH); // Cover mode
-        document.getElementById('zoomSlider').value = state.scale;
-        
-        // Center image
-        state.x = canvasW / 2;
-        state.y = canvasH / 2;
-        
-        draw();
+        btn.classList.add('ready');
     };
 
-    window.addEventListener('resize', () => {
-        if(imgLoaded) initCanvas();
-    });
+    function initCanvas() {
+        const container = document.getElementById('editorContainer');
+        const maxAllowedH = window.innerHeight * 0.45;
+        
+        canvasW = container.clientWidth;
+        let h = canvasW * 1.0; 
+        if(img.height > img.width) h = canvasW * 1.2;
+        if (h > maxAllowedH) h = maxAllowedH;
 
-    // --- Drawing Loop ---
+        canvasH = h;
+        
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = canvasW * dpr;
+        canvas.height = canvasH * dpr;
+        canvas.style.width = canvasW + 'px';
+        canvas.style.height = canvasH + 'px';
+        
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+    }
 
+    function initStandard() {
+        initCanvas();
+        updateCropBox();
+        const scaleW = cropBox.w / img.width;
+        const scaleH = cropBox.h / img.height;
+        stdState.scale = Math.max(scaleW, scaleH);
+        stdState.x = canvasW / 2;
+        stdState.y = canvasH / 2;
+        document.getElementById('zoomSlider').value = stdState.scale;
+    }
+
+    function initPerspective() {
+        initCanvas();
+        // Reset Zoom Tracker
+        lastPerspZoom = 1.0;
+        document.getElementById('zoomSlider').value = 1.0;
+
+        // Calculate initial Fit
+        const scale = Math.min(canvasW/img.width, canvasH/img.height) * 0.8;
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const x = (canvasW - w) / 2;
+        const y = (canvasH - h) / 2;
+
+        imgDisplayRect = { x, y, w, h, scale };
+
+        // 0:TL, 1:TR, 2:BR, 3:BL
+        corners = [
+            {x: x, y: y},
+            {x: x + w, y: y},
+            {x: x + w, y: y + h},
+            {x: x, y: y + h}
+        ];
+    }
+
+    function updateCropBox() {
+        const margin = 20;
+        const maxW = canvasW - (margin * 2);
+        const maxH = canvasH - (margin * 2);
+        const ratio = PRESETS[currentPreset].ratio;
+        
+        let boxW = maxW;
+        let boxH = boxW / ratio;
+        if (boxH > maxH) { boxH = maxH; boxW = boxH * ratio; }
+        
+        cropBox = { w: boxW, h: boxH, x: (canvasW - boxW) / 2, y: (canvasH - boxH) / 2 };
+    }
+
+    // --- Drawing ---
     function draw() {
         if (!imgLoaded) return;
-
-        // Clear
         ctx.clearRect(0, 0, canvasW, canvasH);
-
-        // Background (Dark overlay)
-        ctx.fillStyle = '#1e293b';
+        ctx.fillStyle = '#1e293b'; 
         ctx.fillRect(0, 0, canvasW, canvasH);
 
-        // Draw Image
-        ctx.save();
-        ctx.translate(state.x, state.y);
-        ctx.scale(state.scale, state.scale);
-        ctx.drawImage(img, -img.width / 2, -img.height / 2);
-        ctx.restore();
+        if (appMode === 'standard') {
+            ctx.save();
+            ctx.translate(stdState.x, stdState.y);
+            ctx.scale(stdState.scale, stdState.scale);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+            ctx.restore();
 
-        // Darken outside crop area (Overlay)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.beginPath();
-        ctx.rect(0, 0, canvasW, canvasH);
-        // Cut out the crop box
-        ctx.moveTo(cropBox.x, cropBox.y);
-        ctx.lineTo(cropBox.x + cropBox.w, cropBox.y);
-        ctx.lineTo(cropBox.x + cropBox.w, cropBox.y + cropBox.h);
-        ctx.lineTo(cropBox.x, cropBox.y + cropBox.h);
-        ctx.lineTo(cropBox.x, cropBox.y);
-        ctx.closePath();
-        ctx.fill("evenodd");
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.beginPath();
+            ctx.rect(0, 0, canvasW, canvasH);
+            ctx.moveTo(cropBox.x, cropBox.y);
+            ctx.lineTo(cropBox.x + cropBox.w, cropBox.y);
+            ctx.lineTo(cropBox.x + cropBox.w, cropBox.y + cropBox.h);
+            ctx.lineTo(cropBox.x, cropBox.y + cropBox.h);
+            ctx.lineTo(cropBox.x, cropBox.y);
+            ctx.closePath();
+            ctx.fill("evenodd");
 
-        // Draw Crop Box Border
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([0]);
-        ctx.strokeRect(cropBox.x, cropBox.y, cropBox.w, cropBox.h);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(cropBox.x, cropBox.y, cropBox.w, cropBox.h);
+            
+        } else {
+            // Perspective Mode
+            ctx.drawImage(img, imgDisplayRect.x, imgDisplayRect.y, imgDisplayRect.w, imgDisplayRect.h);
 
-        // Draw Guide Lines (Center)
-        const cx = canvasW / 2;
-        const cy = canvasH / 2;
+            // Connect lines
+            ctx.beginPath();
+            ctx.moveTo(corners[0].x, corners[0].y);
+            ctx.lineTo(corners[1].x, corners[1].y);
+            ctx.lineTo(corners[2].x, corners[2].y);
+            ctx.lineTo(corners[3].x, corners[3].y);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+            ctx.fill();
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.stroke();
 
-        // X-Axis Snap Line
-        if (Math.abs(state.x - cx) < 2) {
-            ctx.strokeStyle = '#00ff88'; // Green snap
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, canvasH); ctx.stroke();
-        }
-
-        // Y-Axis Snap Line
-        if (Math.abs(state.y - cy) < 2) {
-            ctx.strokeStyle = '#00ff88';
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(canvasW, cy); ctx.stroke();
+            // Draw Corners
+            if (activeRemoteCorner === -1) {
+                corners.forEach((c, i) => {
+                    ctx.beginPath();
+                    ctx.arc(c.x, c.y, 14, 0, Math.PI*2);
+                    ctx.fillStyle = '#2563eb';
+                    ctx.fill();
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 12px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(i+1, c.x, c.y);
+                });
+            } else {
+                // Crosshair for remote
+                const c = corners[activeRemoteCorner];
+                const size = 20;
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(c.x - size, c.y); ctx.lineTo(c.x + size, c.y);
+                ctx.moveTo(c.x, c.y - size); ctx.lineTo(c.x, c.y + size);
+                ctx.stroke();
+            }
         }
     }
 
-    // --- Interaction Logic (Touch & Mouse) ---
+    // --- Interaction ---
+    function getDist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
 
-    // Mouse Events
-    canvas.addEventListener('mousedown', e => {
-        state.isDragging = true;
-        state.lastX = e.clientX;
-        state.lastY = e.clientY;
-    });
-
-    window.addEventListener('mousemove', e => {
-        if (!state.isDragging) return;
-        e.preventDefault();
-        handleDrag(e.clientX, e.clientY);
-    });
-
-    window.addEventListener('mouseup', () => state.isDragging = false);
-
-    // Touch Events
+    canvas.addEventListener('mousedown', e => startInput(e.clientX, e.clientY));
     canvas.addEventListener('touchstart', e => {
-        if (e.touches.length === 1) {
-            state.isDragging = true;
-            state.lastX = e.touches[0].clientX;
-            state.lastY = e.touches[0].clientY;
-        } else if (e.touches.length === 2) {
-            state.isDragging = false;
-            state.initialPinchDist = getDist(e.touches);
-            state.initialScale = state.scale;
-        }
-    }, { passive: false });
+        if(e.touches.length === 1) startInput(e.touches[0].clientX, e.touches[0].clientY);
+    }, {passive:false});
 
+    window.addEventListener('mousemove', e => moveInput(e.clientX, e.clientY));
     canvas.addEventListener('touchmove', e => {
-        e.preventDefault(); // Stop scrolling
+        e.preventDefault();
+        if(e.touches.length === 1) moveInput(e.touches[0].clientX, e.touches[0].clientY);
+    }, {passive:false});
+
+    window.addEventListener('mouseup', endInput);
+    canvas.addEventListener('touchend', endInput);
+
+    function startInput(x, y) {
+        const rect = canvas.getBoundingClientRect();
+        const cx = x - rect.left;
+        const cy = y - rect.top;
         
-        if (e.touches.length === 1 && state.isDragging) {
-            handleDrag(e.touches[0].clientX, e.touches[0].clientY);
-        } else if (e.touches.length === 2) {
-            handlePinch(e.touches);
+        lastX = x; lastY = y;
+
+        if (appMode === 'standard') {
+            isDragging = true;
+            stdState.lastX = x; stdState.lastY = y;
+        } else {
+            // Perspective Input
+            let minDist = 40; 
+            activeCorner = -1;
+            
+            // Check if touching a corner
+            corners.forEach((c, i) => {
+                const d = Math.hypot(c.x - cx, c.y - cy);
+                if (d < minDist) { minDist = d; activeCorner = i; }
+            });
+
+            if (activeCorner !== -1) {
+                // Touched a corner -> Drag corner
+                activeRemoteCorner = -1;
+                updateRemoteButtons();
+                draw();
+            } else {
+                // Touched empty space -> Pan the image
+                isPanningPersp = true;
+            }
         }
-    }, { passive: false });
-
-    canvas.addEventListener('touchend', () => {
-        state.isDragging = false;
-        // Reset snap flags so it can vibrate again on next approach
-        isSnappedX = false;
-        isSnappedY = false;
-        alignMsg.style.opacity = 0;
-    });
-
-    // --- Core Logic ---
-
-    function handleDrag(clientX, clientY) {
-        const dx = clientX - state.lastX;
-        const dy = clientY - state.lastY;
-        
-        state.x += dx;
-        state.y += dy;
-        state.lastX = clientX;
-        state.lastY = clientY;
-
-        // Auto Center Snap with Haptics
-        snapToCenter();
-        
-        draw();
     }
 
-    function handlePinch(touches) {
-        const currentDist = getDist(touches);
-        const ratio = currentDist / state.initialPinchDist;
-        const newScale = state.initialScale * ratio;
+    function moveInput(x, y) {
+        const rect = canvas.getBoundingClientRect();
         
-        // Limits
-        if(newScale > 0.1 && newScale < 10) {
-            state.scale = newScale;
-            document.getElementById('zoomSlider').value = state.scale; // Sync slider
+        if (appMode === 'standard' && isDragging) {
+            stdState.x += x - stdState.lastX;
+            stdState.y += y - stdState.lastY;
+            stdState.lastX = x; stdState.lastY = y;
+            snapToCenter();
+            draw();
+        } 
+        else if (appMode === 'perspective') {
+            if (activeCorner !== -1) {
+                // Moving a corner
+                let cx = x - rect.left;
+                let cy = y - rect.top;
+                cx = Math.max(0, Math.min(canvasW, cx));
+                cy = Math.max(0, Math.min(canvasH, cy));
+                corners[activeCorner] = {x: cx, y: cy};
+                draw();
+            } else if (isPanningPersp) {
+                // Panning the whole view
+                const dx = x - lastX;
+                const dy = y - lastY;
+                
+                // Move image rect
+                imgDisplayRect.x += dx;
+                imgDisplayRect.y += dy;
+                
+                // Move all corners
+                corners.forEach(c => {
+                    c.x += dx;
+                    c.y += dy;
+                });
+                
+                lastX = x; lastY = y;
+                draw();
+            }
         }
-        
-        draw();
     }
 
-    function getDist(touches) {
-        return Math.hypot(
-            touches[0].clientX - touches[1].clientX,
-            touches[0].clientY - touches[1].clientY
-        );
+    function endInput() {
+        isDragging = false;
+        isPanningPersp = false;
+        activeCorner = -1;
+        isSnappedX = isSnappedY = false;
+        if(appMode === 'standard') alignMsg.style.opacity = 0;
     }
 
+    // --- Zoom Logic ---
     function manualZoom(val) {
-        state.scale = parseFloat(val);
+        const newVal = parseFloat(val);
+        
+        if (appMode === 'standard') {
+            stdState.scale = newVal;
+        } else {
+            // Perspective Zoom Logic
+            // Calculate ratio change based on previous slider value
+            const ratio = newVal / lastPerspZoom;
+            lastPerspZoom = newVal;
+
+            // Zoom Center = Canvas Center
+            const cx = canvasW / 2;
+            const cy = canvasH / 2;
+
+            // Scale Image Rect relative to Center
+            imgDisplayRect.x = cx + (imgDisplayRect.x - cx) * ratio;
+            imgDisplayRect.y = cy + (imgDisplayRect.y - cy) * ratio;
+            imgDisplayRect.w *= ratio;
+            imgDisplayRect.h *= ratio;
+            
+            // Update scale factor (vital for crop calc)
+            imgDisplayRect.scale *= ratio;
+
+            // Scale Corners relative to Center
+            corners.forEach(c => {
+                c.x = cx + (c.x - cx) * ratio;
+                c.y = cy + (c.y - cy) * ratio;
+            });
+        }
         draw();
     }
 
+    function adjustZoom(delta) {
+        const slider = document.getElementById('zoomSlider');
+        let newVal = parseFloat(slider.value) + delta;
+        if(newVal < 0.1) newVal = 0.1;
+        if(newVal > 3.0) newVal = 3.0;
+        slider.value = newVal;
+        manualZoom(newVal);
+    }
+
+    // --- Remote Control Logic ---
+    function selectRemoteCorner(index) {
+        activeRemoteCorner = (activeRemoteCorner === index) ? -1 : index;
+        updateRemoteButtons();
+        draw();
+    }
+
+    function updateRemoteButtons() {
+        const btns = document.querySelectorAll('.corner-btn');
+        btns.forEach(b => b.classList.remove('active'));
+        if(activeRemoteCorner !== -1) {
+            if(activeRemoteCorner === 0) btns[0].classList.add('active');
+            if(activeRemoteCorner === 1) btns[1].classList.add('active');
+            if(activeRemoteCorner === 3) btns[2].classList.add('active'); 
+            if(activeRemoteCorner === 2) btns[3].classList.add('active');
+        }
+    }
+
+    const pad = document.getElementById('touchPad');
+    let padStartX = 0, padStartY = 0;
+    pad.addEventListener('touchstart', e => {
+        if(activeRemoteCorner === -1) return;
+        padStartX = e.touches[0].clientX;
+        padStartY = e.touches[0].clientY;
+        e.preventDefault();
+    }, {passive: false});
+
+    pad.addEventListener('touchmove', e => {
+        if(activeRemoteCorner === -1) return;
+        e.preventDefault();
+        const curX = e.touches[0].clientX;
+        const curY = e.touches[0].clientY;
+        const dx = curX - padStartX;
+        const dy = curY - padStartY;
+        let c = corners[activeRemoteCorner];
+        c.x = Math.max(0, Math.min(canvasW, c.x + dx));
+        c.y = Math.max(0, Math.min(canvasH, c.y + dy));
+        padStartX = curX; padStartY = curY;
+        draw();
+    }, {passive: false});
+
+    // --- Helpers ---
     function snapToCenter() {
-        const threshold = 10;
-        const cx = canvasW / 2;
-        const cy = canvasH / 2;
-        let vibrated = false;
-
-        // Snap X
-        if (Math.abs(state.x - cx) < threshold) {
-            state.x = cx;
-            if (!isSnappedX) {
-                isSnappedX = true;
-                vibrated = true;
-            }
-        } else {
-            isSnappedX = false;
-        }
-
-        // Snap Y
-        if (Math.abs(state.y - cy) < threshold) {
-            state.y = cy;
-            if (!isSnappedY) {
-                isSnappedY = true;
-                vibrated = true;
-            }
-        } else {
-            isSnappedY = false;
-        }
-
-        if (vibrated && navigator.vibrate) {
-            navigator.vibrate(40); // Haptic feedback
-            alignMsg.style.opacity = 1;
-        } else if (!isSnappedX && !isSnappedY) {
-            alignMsg.style.opacity = 0;
-        }
+        const cx = canvasW/2, cy = canvasH/2, th = 10;
+        let vib = false;
+        if(Math.abs(stdState.x - cx) < th) { stdState.x = cx; if(!isSnappedX) { vib=true; isSnappedX=true; } } else isSnappedX=false;
+        if(Math.abs(stdState.y - cy) < th) { stdState.y = cy; if(!isSnappedY) { vib=true; isSnappedY=true; } } else isSnappedY=false;
+        if(vib && navigator.vibrate) { navigator.vibrate(40); alignMsg.style.opacity = 1; }
+        else if(!isSnappedX && !isSnappedY) alignMsg.style.opacity = 0;
     }
 
     function setPreset(type, btn) {
         currentPreset = type;
-        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         updateCropBox();
+        draw();
     }
 
-    // --- Crop & Download ---
-
-    function cropAndDownload() {
-        if (!imgLoaded) return;
-
-        // 1. Create a temporary canvas for the final output
-        const tempCanvas = document.createElement('canvas');
-        
-        // We want high resolution output. 
-        // Let's say we map the width of the crop box to a fixed high-res width (e.g., 1000px)
-        const outputWidth = 1000; 
-        const outputHeight = outputWidth / PRESETS[currentPreset].ratio;
-        
-        tempCanvas.width = outputWidth;
-        tempCanvas.height = outputHeight;
-        const tCtx = tempCanvas.getContext('2d');
-
-        // 2. Calculate the source area
-        // The crop box in canvas coordinates is cropBox.x, cropBox.y
-        // The image is at state.x, state.y with scale state.scale
-        // We need to inverse the transforms to find what part of the image lies under the crop box
-        
-        // Center of the crop box relative to image center
-        const centerOffsetX = (canvasW / 2) - state.x;
-        const centerOffsetY = (canvasH / 2) - state.y;
-
-        // Draw on temp canvas
-        tCtx.save();
-        
-        // Move to center of temp canvas
-        tCtx.translate(outputWidth/2, outputHeight/2);
-        
-        // Apply the same scale relative to the output size vs screen size ratio
-        // Scale factor = outputWidth / cropBox.w
-        const resolutionScale = outputWidth / cropBox.w;
-        const finalScale = state.scale * resolutionScale;
-        
-        tCtx.scale(finalScale, finalScale);
-        
-        // Move the image based on the offset we calculated
-        // We need to shift it in the opposite direction of the center offset, adjusted for resolution
-        tCtx.translate(
-            -centerOffsetX / state.scale * state.scale, 
-            -centerOffsetY / state.scale * state.scale
-        ); // Mathematically simplifies, but let's just draw logic:
-        
-        // Actually, easier way:
-        // Draw image such that the point under the center of screen matches center of temp canvas
-        tCtx.drawImage(img, -img.width/2, -img.height/2);
-        
-        tCtx.restore();
-
-        // 3. Export
-        const url = tempCanvas.toDataURL('image/jpeg', 0.95);
-        document.getElementById('finalResult').src = url;
+    // --- Processing ---
+    function processCrop() {
+        if(!imgLoaded) return;
         document.getElementById('resultModal').classList.add('active');
         
-        // Store for download button
+        if (appMode === 'standard') {
+            document.getElementById('resultContent').style.display = 'block';
+            document.getElementById('loadingIndicator').style.display = 'none';
+            cropStandard();
+        } else {
+            document.getElementById('resultContent').style.display = 'none';
+            document.getElementById('loadingIndicator').style.display = 'block';
+            setTimeout(cropPerspective, 100);
+        }
+    }
+
+    function cropStandard() {
+        const imgTLx = stdState.x - (img.width * stdState.scale) / 2;
+        const imgTLy = stdState.y - (img.height * stdState.scale) / 2;
+        const sourceX = (cropBox.x - imgTLx) / stdState.scale;
+        const sourceY = (cropBox.y - imgTLy) / stdState.scale;
+        const sourceW = cropBox.w / stdState.scale;
+        const sourceH = cropBox.h / stdState.scale;
+
+        const outW = 1000;
+        const outH = outW / PRESETS[currentPreset].ratio;
+        const cvs = document.createElement('canvas');
+        cvs.width = outW; cvs.height = outH;
+        cvs.getContext('2d').drawImage(img, sourceX, sourceY, sourceW, sourceH, 0, 0, outW, outH);
+        displayResult(cvs.toDataURL('image/jpeg', 0.95));
+    }
+
+    function cropPerspective() {
+        const sortedByY = [...corners].sort((a,b) => a.y - b.y);
+        const topRow = sortedByY.slice(0, 2).sort((a,b) => a.x - b.x); 
+        const botRow = sortedByY.slice(2, 4).sort((a,b) => a.x - b.x); 
+        const orderedCorners = [topRow[0], topRow[1], botRow[1], botRow[0]];
+
+        // Calculate source corners based on current display rect and zoom level
+        const srcCorners = orderedCorners.map(c => ({
+            x: (c.x - imgDisplayRect.x) / imgDisplayRect.scale,
+            y: (c.y - imgDisplayRect.y) / imgDisplayRect.scale
+        }));
+
+        const wTop = Math.hypot(srcCorners[1].x - srcCorners[0].x, srcCorners[1].y - srcCorners[0].y);
+        const wBot = Math.hypot(srcCorners[2].x - srcCorners[3].x, srcCorners[2].y - srcCorners[3].y);
+        const hLeft = Math.hypot(srcCorners[3].x - srcCorners[0].x, srcCorners[3].y - srcCorners[0].y);
+        const hRight = Math.hypot(srcCorners[2].x - srcCorners[1].x, srcCorners[2].y - srcCorners[1].y);
+        
+        const outW = Math.round(Math.max(wTop, wBot));
+        const outH = Math.round(Math.max(hLeft, hRight));
+
+        const outCvs = document.createElement('canvas');
+        outCvs.width = outW; outCvs.height = outH;
+        const outCtx = outCvs.getContext('2d');
+        const outData = outCtx.createImageData(outW, outH);
+
+        const tmpCvs = document.createElement('canvas');
+        tmpCvs.width = img.width; tmpCvs.height = img.height;
+        const tmpCtx = tmpCvs.getContext('2d');
+        tmpCtx.drawImage(img, 0, 0);
+        const srcData = tmpCtx.getImageData(0, 0, img.width, img.height);
+
+        const H = getHomographyMatrix(srcData.width, srcData.height, srcCorners, outW, outH);
+        const dstBuf = outData.data;
+        const srcBuf = srcData.data;
+        const sw = srcData.width;
+        const sh = srcData.height;
+
+        for (let y = 0; y < outH; y++) {
+            for (let x = 0; x < outW; x++) {
+                const denom = H[6]*x + H[7]*y + 1;
+                const u = (H[0]*x + H[1]*y + H[2]) / denom;
+                const v = (H[3]*x + H[4]*y + H[5]) / denom;
+
+                const dstIdx = (y * outW + x) * 4;
+                if (u >= 0 && u < sw - 1 && v >= 0 && v < sh - 1) {
+                    const u0 = Math.floor(u), v0 = Math.floor(v);
+                    const wu = u - u0, wv = v - v0;
+                    const i00 = (v0 * sw + u0) * 4;
+                    const i10 = (v0 * sw + (u0+1)) * 4;
+                    const i01 = ((v0+1) * sw + u0) * 4;
+                    const i11 = ((v0+1) * sw + (u0+1)) * 4;
+
+                    for (let k = 0; k < 3; k++) {
+                        dstBuf[dstIdx+k] = 
+                            srcBuf[i00+k]*(1-wu)*(1-wv) +
+                            srcBuf[i10+k]*wu*(1-wv) +
+                            srcBuf[i01+k]*(1-wu)*wv +
+                            srcBuf[i11+k]*wu*wv;
+                    }
+                    dstBuf[dstIdx+3] = 255; 
+                } else {
+                    dstBuf[dstIdx+3] = 255; 
+                    dstBuf[dstIdx] = dstBuf[dstIdx+1] = dstBuf[dstIdx+2] = 255; 
+                }
+            }
+        }
+        outCtx.putImageData(outData, 0, 0);
+        document.getElementById('loadingIndicator').style.display = 'none';
+        document.getElementById('resultContent').style.display = 'block';
+        displayResult(outCvs.toDataURL('image/jpeg', 0.95));
+    }
+
+    function getHomographyMatrix(sw, sh, src, dw, dh) {
+        const pts = [
+            {xd:0, yd:0, xs:src[0].x, ys:src[0].y},
+            {xd:dw, yd:0, xs:src[1].x, ys:src[1].y},
+            {xd:dw, yd:dh, xs:src[2].x, ys:src[2].y},
+            {xd:0, yd:dh, xs:src[3].x, ys:src[3].y}
+        ];
+        let A = [];
+        for(let i=0; i<4; i++) {
+            let p = pts[i];
+            A.push([p.xd, p.yd, 1, 0, 0, 0, -p.xd*p.xs, -p.yd*p.xs, p.xs]);
+            A.push([0, 0, 0, p.xd, p.yd, 1, -p.xd*p.ys, -p.yd*p.ys, p.ys]);
+        }
+        const N = 8;
+        for(let i=0; i<N; i++) {
+            let pivot = i;
+            for(let j=i+1; j<N; j++) {
+                if(Math.abs(A[j][i]) > Math.abs(A[pivot][i])) pivot = j;
+            }
+            [A[i], A[pivot]] = [A[pivot], A[i]];
+            if (Math.abs(A[i][i]) < 1e-8) continue;
+            let div = A[i][i];
+            for(let j=i; j<=N; j++) A[i][j] /= div;
+            for(let k=0; k<N; k++) {
+                if(k !== i) {
+                    let fac = A[k][i];
+                    for(let j=i; j<=N; j++) A[k][j] -= fac * A[i][j];
+                }
+            }
+        }
+        return [A[0][8], A[1][8], A[2][8], A[3][8], A[4][8], A[5][8], A[6][8], A[7][8]];
+    }
+
+    function displayResult(url) {
+        document.getElementById('finalResult').src = url;
         window.finalBlobUrl = url;
     }
 
     function downloadResult() {
-        if(window.finalBlobUrl) {
-            saveAs(window.finalBlobUrl, `${currentPreset}_cropped.jpg`);
-        }
+        if(window.finalBlobUrl) saveAs(window.finalBlobUrl, 'id_cropped.jpg');
+    }
+
+    function closeModal() {
+        document.getElementById('resultModal').classList.remove('active');
     }
 
 </script>
-
 <script src="tool-ads.js"></script>
-
 </body>
 </html>
