@@ -1,0 +1,21 @@
+{
+  "name": "Pro File Tools",
+  "short_name": "ProTools",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8f9fc",
+  "theme_color": "#0070f3",
+  "description": "All-in-one digital utility dashboard for file management.",
+  "icons": [
+    {
+      "src": "mrbtoolslogo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "mrbtoolslogo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
