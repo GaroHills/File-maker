@@ -297,5 +297,5 @@ const toolIcons = {
     IMG
   </text>
 
-</svg>`,
+</svg>`
 };
