@@ -1,5 +1,5 @@
 // --- CONFIGURATION ---
-const APP_VERSION = 'v1.4.0'; // <--- CHANGE THIS NUMBER TO UPDATE APP
+const APP_VERSION = 'v1.5.0'; // <--- CHANGE THIS NUMBER TO UPDATE APP
 const CACHE_NAME = `mrb-tools-${APP_VERSION}`;
 
 const ASSETS_TO_CACHE = [
