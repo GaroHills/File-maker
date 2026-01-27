@@ -330,6 +330,6 @@ const toolIcons = {
   <!-- Bottom Right -->
   <path d="M100 86h-10M100 86v-10" stroke="#0d47a1" stroke-width="3" stroke-linecap="round"/>
 
-</svg>',
+</svg>'
     
 };
