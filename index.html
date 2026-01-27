@@ -617,7 +617,7 @@
         }
 
         async function shareApp() {
-            const shareData = { title: 'Pro File Tools', url: window.location.href };
+            const shareData = { title: 'MRB Tools', url: window.location.href };
             if (navigator.share) {
                 try { await navigator.share(shareData); return; } catch (err) {}
             }
@@ -626,7 +626,7 @@
 
         function openShareModal() {
             const url = window.location.href;
-            const text = encodeURIComponent("Check out these Pro File Tools: ");
+            const text = encodeURIComponent("Check out these MRB Tools: ");
             document.getElementById('shareWS').href = `https://api.whatsapp.com/send?text=${text}${url}`;
             document.getElementById('shareFB').href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
             document.getElementById('shareTG').href = `https://t.me/share/url?url=${url}&text=${text}`;
