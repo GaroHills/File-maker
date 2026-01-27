@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MRB Tools Dashboard</title>
+    <title>Pro File Tools Dashboard</title>
     
+    <!-- PWA MANIFEST & THEME -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0070f3">
+    <link rel="apple-touch-icon" href="mrbtoolslogo.jpg">
+
     <!-- GOOGLE ADSENSE AUTO ADS -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-app-pub-6977854260175569~8531255733"
          crossorigin="anonymous"></script>
@@ -39,7 +44,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 15px 2 5px 0;
+            padding: 15px 2px 5px 1;
             width: 100%;
         }
 
@@ -47,7 +52,7 @@
         .offline-banner {
             position: fixed;
             top: -100px;
-            left: 2;
+            left: 2px;
             width: 98%;
             background-color: var(--danger);
             color: white;
@@ -101,6 +106,29 @@
             margin: 0;
             font-size: 1.2rem;
             font-weight: 600;
+        }
+
+        /* --- PWA INSTALL BUTTON --- */
+        .install-btn {
+            display: none; /* Hidden by default */
+            margin-left: auto; /* Pushes button to the right */
+            background-color: white;
+            color: var(--primary);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: transform 0.2s;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .install-btn:hover {
+            transform: scale(1.05);
+            background-color: #f0f7ff;
         }
 
         /* --- SEARCH BAR --- */
@@ -443,6 +471,11 @@
     <header>
         <button class="menu-btn" onclick="openDrawer()">☰</button>
         <h1>File Tool Compressor</h1>
+        <!-- INSTALL APP BUTTON -->
+        <button id="installAppBtn" class="install-btn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            Install
+        </button>
     </header>
 
     <!-- AD BANNER SECTION -->
@@ -513,6 +546,48 @@
         let allTools = [];
         let lastToolsHash = "";
         let searchTimeout = null;
+        let deferredPrompt;
+
+        // --- PWA LOGIC START ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered!', reg))
+                    .catch(err => console.log('Service Worker registration failed', err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            // Update UI to notify the user they can add to home screen
+            const installBtn = document.getElementById('installAppBtn');
+            installBtn.style.display = 'flex';
+
+            installBtn.addEventListener('click', (e) => {
+                // Hide the app provided install promotion
+                installBtn.style.display = 'none';
+                // Show the prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the A2HS prompt');
+                    } else {
+                        console.log('User dismissed the A2HS prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            });
+        });
+
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('App successfully installed');
+            document.getElementById('installAppBtn').style.display = 'none';
+        });
+        // --- PWA LOGIC END ---
 
         // --- OFFLINE LOGIC ---
         function updateOnlineStatus() {
@@ -542,7 +617,7 @@
         }
 
         async function shareApp() {
-            const shareData = { title: 'MRB Tools', url: window.location.href };
+            const shareData = { title: 'Pro File Tools', url: window.location.href };
             if (navigator.share) {
                 try { await navigator.share(shareData); return; } catch (err) {}
             }
@@ -551,7 +626,7 @@
 
         function openShareModal() {
             const url = window.location.href;
-            const text = encodeURIComponent("Check out these MRB Tools: ");
+            const text = encodeURIComponent("Check out these Pro File Tools: ");
             document.getElementById('shareWS').href = `https://api.whatsapp.com/send?text=${text}${url}`;
             document.getElementById('shareFB').href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
             document.getElementById('shareTG').href = `https://t.me/share/url?url=${url}&text=${text}`;
