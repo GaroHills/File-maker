@@ -45,5 +45,10 @@ var toolMetadata = {
         category: "General Tools",
         tags: ["Utility"],
         color: "#64748b"
+    },
+    "img_resize": {
+        category: "Image Format",
+        tags: ["Super fast", "2026", "NEW"],
+        color: "#00a86b"
     }
 };

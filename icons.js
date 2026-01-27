@@ -186,5 +186,116 @@ const toolIcons = {
 
 </svg>`,
 
-    "default": `<svg viewBox="0 0 24 24"><path fill="#0070f3" d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"/></svg>`
+    "img_resize": `<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     stroke-linecap="square"
+     stroke-linejoin="miter">
+
+  <!-- Width Arrow (Top) -->
+  <line x1="18" y1="10" x2="46" y2="10"
+        stroke="#2563eb" stroke-width="1.5"/>
+  <polyline points="21 8 18 10 21 12"
+            stroke="#2563eb" stroke-width="1.5"/>
+  <polyline points="43 8 46 10 43 12"
+            stroke="#2563eb" stroke-width="1.5"/>
+
+  <!-- Height Arrow (Right) -->
+  <line x1="52" y1="18" x2="52" y2="44"
+        stroke="#7c3aed" stroke-width="1.5"/>
+  <polyline points="50 21 52 18 54 21"
+            stroke="#7c3aed" stroke-width="1.5"/>
+  <polyline points="50 41 52 44 54 41"
+            stroke="#7c3aed" stroke-width="1.5"/>
+
+  <!-- Image Frame (Sharp Corners) -->
+  <rect x="14" y="16" width="32" height="24"
+        stroke="#111827"
+        stroke-width="1.5"/>
+
+  <!-- Small Sun -->
+  <circle cx="20" cy="22" r="2"
+          stroke="#111827"
+          stroke-width="1.5"/>
+
+  <!-- Mountains (Simple Lines) -->
+  <polyline points="16 38 26 28 32 34 40 26 46 38"
+            stroke="#111827"
+            stroke-width="1.5"
+            fill="none"/>
+
+</svg>`,
+
+"default": `<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 512 640"
+     width="512"
+     height="640">
+
+  <defs>
+    <linearGradient id="redGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff5252"/>
+      <stop offset="100%" stop-color="#b71c1c"/>
+    </linearGradient>
+
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- File Base -->
+  <path d="M96 20h256l80 80v460a40 40 0 0 1-40 40H96a40 40 0 0 1-40-40V60a40 40 0 0 1 40-40z"
+        fill="#e31c1c"/>
+
+  <!-- Folded Corner -->
+  <polygon points="352,20 432,100 352,100"
+           fill="#b71c1c"/>
+
+  <!-- Top Label with Glow -->
+  <rect x="56" y="60" width="300" height="80"
+        rx="6"
+        fill="url(#redGlow)"
+        filter="url(#glow)"/>
+
+  <text x="206" y="115"
+        font-size="46"
+        font-weight="bold"
+        text-anchor="middle"
+        fill="#ffffff"
+        font-family="Arial, Helvetica, sans-serif">
+    MRB Tools
+  </text>
+
+  <!-- Dashed Image Container -->
+  <rect x="156" y="200" width="200" height="140"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="6"
+        stroke-dasharray="10 8"/>
+
+  <!-- Gallery Icon (Sun) -->
+  <circle cx="205" cy="235" r="10"
+          fill="#ffffff"/>
+
+  <!-- Gallery Icon (Mountains) -->
+  <polyline points="170 330 230 270 265 305 315 260 345 330"
+            fill="none"
+            stroke="#ffffff"
+            stroke-width="8"
+            stroke-linejoin="round"/>
+
+  <!-- Bottom IMG Text -->
+  <text x="256" y="520"
+        font-size="64"
+        font-weight="bold"
+        text-anchor="middle"
+        fill="#ffffff"
+        font-family="Arial, Helvetica, sans-serif">
+    IMG
+  </text>
+
+</svg>`
 };

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MRB Tools Dashboard</title>
+    <title>Pro File Tools Dashboard</title>
     
     <!-- GOOGLE ADSENSE AUTO ADS -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-app-pub-6977854260175569~8531255733"
@@ -321,7 +321,7 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
 
-        .card-icon { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+        .card-icon { width: 60px; height: 70px; display: flex; align-items: center; justify-content: center; }
         .card-icon svg { width: 100%; height: 100%; }
 
         .tool-name { font-weight: 600; font-size: 14px; text-transform: capitalize; color: #334155; }
@@ -471,7 +471,7 @@
 
         <!-- ABOUT SECTION -->
         <div class="about-section">
-            <h2>About Pro MRB Tools</h2>
+            <h2>About Pro File Tools</h2>
             <p>
                 Welcome to your all-in-one digital utility dashboard. <strong>Pro File Tools</strong> is designed to make file management simple, fast, and secure. Whether you are a creative professional looking to compress high-resolution images, a student needing to convert PDF documents, or a developer optimizing code snippets, our suite of tools is here to help.
             </p>
@@ -637,7 +637,78 @@
                 let gridHTML = `<div class="category-title">${cat}</div><div class="tool-grid">`;
                 
                 groups[cat].forEach(tool => {
-                    const icon = (typeof toolIcons !== 'undefined' && toolIcons[tool.key]) ? toolIcons[tool.key] : (typeof toolIcons !== 'undefined' ? toolIcons["default"] : "🛠️");
+const defaultSvgIcon = `
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 512 640"
+     width="32"
+     height="40">
+
+  <defs>
+    <linearGradient id="redGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff5252"/>
+      <stop offset="100%" stop-color="#b71c1c"/>
+    </linearGradient>
+
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <path d="M96 20h256l80 80v460a40 40 0 0 1-40 40H96a40 40 0 0 1-40-40V60a40 40 0 0 1 40-40z"
+        fill="#e31c1c"/>
+
+  <polygon points="352,20 432,100 352,100"
+           fill="#b71c1c"/>
+
+  <rect x="56" y="60" width="300" height="80"
+        rx="6"
+        fill="url(#redGlow)"
+        filter="url(#glow)"/>
+
+  <text x="206" y="115"
+        font-size="46"
+        font-weight="bold"
+        text-anchor="middle"
+        fill="#ffffff"
+        font-family="Arial, Helvetica, sans-serif">
+    MRB Tools
+  </text>
+
+  <rect x="156" y="200" width="200" height="140"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="6"
+        stroke-dasharray="10 8"/>
+
+  <circle cx="205" cy="235" r="10" fill="#ffffff"/>
+
+  <polyline points="170 330 230 270 265 305 315 260 345 330"
+            fill="none"
+            stroke="#ffffff"
+            stroke-width="8"
+            stroke-linejoin="round"/>
+
+  <text x="256" y="520"
+        font-size="64"
+        font-weight="bold"
+        text-anchor="middle"
+        fill="#ffffff"
+        font-family="Arial, Helvetica, sans-serif">
+    IMG
+  </text>
+</svg>
+`;
+
+const icon =
+  (typeof toolIcons !== 'undefined' && toolIcons[tool.key])
+    ? toolIcons[tool.key]
+    : (typeof toolIcons !== 'undefined' && toolIcons["default"])
+      ? toolIcons["default"]
+      : defaultSvgIcon;
                     const tagsHTML = tool.tags.map(t => `<span class="tool-tag" style="background:${tool.color}">${t}</span>`).join('');
                     const displayName = tool.name.replace(/_/g, ' ').replace('.html', '');
                     

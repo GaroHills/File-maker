@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Imag Resizer</title>
+    <!-- Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <style>
+        :root { --primary: #3b82f6; --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #1e293b; --radius: 12px; --success: #16a34a; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; }
+        
+        /* Layout */
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
+        .header { text-align: center; margin-bottom: 25px; }
+        h2 { margin: 0; color: var(--primary); font-size: 24px; }
+        p { color: #64748b; font-size: 14px; margin-top: 5px; }
+
+        /* 1. Upload Box */
+        .upload-area {
+            border: 2px dashed var(--primary);
+            background: #eff6ff;
+            border-radius: var(--radius);
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 20px;
+            user-select: none;
+        }
+        .upload-area:active { transform: scale(0.98); }
+        .upload-icon { font-size: 36px; margin-bottom: 10px; display: block; }
+        .upload-text { font-weight: 600; color: var(--primary); font-size: 16px; }
+        .upload-sub { font-size: 12px; color: #94a3b8; margin-top:5px; }
+        input[type="file"] { display: none; }
+
+        /* 2. Selected Files Layout (Horizontal Scroll) */
+        .preview-grid {
+            display: flex;
+            overflow-x: auto;
+            gap: 12px;
+            padding: 5px 2px 15px 2px;
+            margin-bottom: 20px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            min-height: 10px; 
+        }
+        .preview-grid::-webkit-scrollbar { height: 6px; }
+        .preview-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .file-card {
+            flex: 0 0 110px;
+            width: 110px;
+            scroll-snap-align: start;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 5px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        }
+        .file-icon { font-size: 28px; margin-bottom: 5px; color: #94a3b8; }
+        .file-name { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; margin-bottom: 2px; }
+        .file-size { font-size: 10px; color: #64748b; margin-bottom: 8px; }
+        .view-btn { background: transparent; border: 1px solid var(--primary); color: var(--primary); border-radius: 4px; padding: 4px 10px; font-size: 10px; cursor: pointer; width: 80%; transition: 0.2s; }
+        .view-btn:hover { background: #eff6ff; }
+        .remove-btn { position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 5; }
+
+        /* Controls Section */
+        .controls { background: var(--surface); padding: 20px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .label { font-weight: 600; font-size: 14px; }
+        
+        .preset-row { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .preset-btn { 
+            flex: 1; min-width: 85px; padding: 10px; 
+            background: var(--bg); border: 1px solid var(--border); 
+            border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; color: #64748b;
+        }
+        .preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        .dimension-group { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .input-box { flex: 1; position: relative; }
+        .input-box span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #94a3b8; }
+        input[type="number"] { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 16px; outline: none; box-sizing: border-box; }
+        input[type="number"]:focus { border-color: var(--primary); }
+
+        .lock-aspect { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #64748b; cursor: pointer; user-select: none; }
+        .lock-aspect input { width: 16px; height: 16px; cursor: pointer; }
+
+        /* Buttons */
+        .action-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--primary), #2563eb); color: white; border: none; border-radius: 50px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(59,130,246,0.3); transition: transform 0.1s; }
+        .action-btn:active { transform: scale(0.98); }
+        .zip-btn { background: linear-gradient(135deg, var(--success), #15803d); box-shadow: 0 4px 10px rgba(22,163,74,0.3); margin-bottom: 15px; }
+        .btn-secondary { background: transparent; border: 1px solid #cbd5e1; color: #64748b; padding: 12px 20px; border-radius: 50px; font-weight: 600; cursor: pointer; flex: 1; }
+
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 100; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: white; width: 90%; max-width: 450px; border-radius: 16px; padding: 25px; max-height: 85vh; display: flex; flex-direction: column; position: relative; }
+
+        .results-list { overflow-y: auto; margin: 15px 0; border-top: 1px solid var(--border); }
+        .result-item { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 12px 0; gap: 10px; }
+        .result-info { font-size: 12px; flex: 1; }
+        .dim-final { color: var(--success); font-weight: 700; }
+        .dl-mini-btn { background: var(--primary); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+        .progress-container { width: 100%; margin: 15px 0; }
+        .progress-track { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
+        .progress-text { text-align: center; font-size: 12px; color: #64748b; margin-top: 5px; }
+
+        .alert-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .viewer-wrapper { text-align: center; position: relative; width: 100%; }
+        .viewer-img { max-width: 100%; max-height: 70vh; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
+        .viewer-close { position: absolute; top: -40px; right: 0; color: white; font-size: 28px; cursor: pointer; background: none; border: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Image Dimension Resizer</h2>
+        <p>Batch resize images to specific width & height.</p>
+    </div>
+
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <span class="upload-icon">🖼️</span>
+        <div class="upload-text">Select Images to Resize</div>
+        <div class="upload-sub">All processing happens in your browser</div>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*" onchange="handleSelection(this)">
+
+    <div id="previewGrid" class="preview-grid" style="display:none;"></div>
+
+    <div class="controls">
+        <div class="label-row">
+            <span class="label">Target Dimensions</span>
+            <label class="lock-aspect">
+                <input type="checkbox" id="lockAspect" checked> Lock Aspect Ratio
+            </label>
+        </div>
+        
+        <div class="preset-row">
+            <button class="preset-btn" onclick="setPreset(1080, 1080, this)">1:1 Square</button>
+            <button class="preset-btn" onclick="setPreset(1920, 1080, this)">16:9 FHD</button>
+            <button class="preset-btn" onclick="setPreset(1080, 1350, this)">4:5 Portrait</button>
+            <button class="preset-btn" onclick="setPreset(1280, 720, this)">720p HD</button>
+        </div>
+
+        <div class="dimension-group">
+            <div class="input-box">
+                <input type="number" id="targetW" value="1080" placeholder="Width" oninput="handleDimChange('w')">
+                <span>W (px)</span>
+            </div>
+            <div style="color:#cbd5e1; font-weight:bold;">×</div>
+            <div class="input-box">
+                <input type="number" id="targetH" value="1080" placeholder="Height" oninput="handleDimChange('h')">
+                <span>H (px)</span>
+            </div>
+        </div>
+    </div>
+
+    <button class="action-btn" onclick="startProcessing()">Resize & Download All</button>
+</div>
+
+<!-- Progress Modal -->
+<div id="loadingModal" class="modal-overlay">
+    <div class="modal-box" style="align-items: center; justify-content: center; text-align: center;">
+        <h3 style="margin:0 0 10px 0;">Resizing Images...</h3>
+        <div class="progress-container">
+            <div class="progress-track"><div id="pFill" class="progress-fill"></div></div>
+            <div id="pText" class="progress-text">0%</div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div id="resultModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="margin:0 0 15px 0;">Processing Complete</h3>
+        <button id="zipAllBtn" class="action-btn zip-btn" onclick="downloadAllZip()">
+            Download All as ZIP (0)
+        </button>
+        <div class="results-list" id="resultsContainer"></div>
+        <button class="action-btn" onclick="closeResults()" style="padding:12px; font-size:14px; background: #64748b; margin-top: auto;">Close</button>
+    </div>
+</div>
+
+<!-- Custom Alert Modal -->
+<div id="alertModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 320px; text-align: center;">
+        <div id="alertIcon" style="font-size:40px; margin-bottom:10px;">⚠️</div>
+        <h3 id="alertTitle" style="margin:0 0 10px 0;">Notice</h3>
+        <p id="alertMsg" style="color:#64748b; margin:0; font-size:14px; line-height:1.5;"></p>
+        <div id="alertButtons" class="alert-btns"></div>
+    </div>
+</div>
+
+<!-- Image Viewer -->
+<div id="imageViewerModal" class="modal-overlay" onclick="closeViewer()">
+    <div class="viewer-wrapper" onclick="event.stopPropagation()">
+        <button class="viewer-close" onclick="closeViewer()">&times;</button>
+        <img id="viewerImage" class="viewer-img" src="">
+        <div id="viewerName" style="color:white; margin-top:10px; font-size:14px;"></div>
+    </div>
+</div>
+
+<script>
+    let selectedFiles = [];
+    let processedResults = [];
+    let currentAspectRatio = 1;
+
+    // --- Custom Alert System ---
+    function showAlert(msg) {
+        return new Promise(resolve => {
+            const modal = document.getElementById('alertModal');
+            document.getElementById('alertMsg').innerText = msg;
+            const btnContainer = document.getElementById('alertButtons');
+            btnContainer.innerHTML = '';
+            const okBtn = document.createElement('button');
+            okBtn.className = 'action-btn';
+            okBtn.innerText = 'OK';
+            okBtn.onclick = () => { modal.classList.remove('active'); resolve(); };
+            btnContainer.appendChild(okBtn);
+            modal.classList.add('active');
+        });
+    }
+
+    // --- Core Logic ---
+    function handleSelection(input) {
+        if(input.files.length === 0) return;
+        const newFiles = Array.from(input.files);
+        
+        if (selectedFiles.length === 0) {
+            const img = new Image();
+            img.src = URL.createObjectURL(newFiles[0]);
+            img.onload = () => {
+                currentAspectRatio = img.width / img.height;
+                document.getElementById('targetW').value = img.width;
+                document.getElementById('targetH').value = img.height;
+            };
+        }
+
+        selectedFiles = [...selectedFiles, ...newFiles];
+        renderGrid();
+        input.value = ''; 
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('previewGrid');
+        grid.innerHTML = ''; 
+        if(selectedFiles.length === 0) { grid.style.display = 'none'; return; }
+        grid.style.display = 'flex'; 
+        selectedFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'file-card';
+            div.innerHTML = `
+                <button class="remove-btn" onclick="removeFile(${index})">×</button>
+                <div class="file-icon">🖼️</div>
+                <div class="file-name">${file.name}</div>
+                <button class="view-btn" onclick="openViewer(${index})">View</button>
+            `;
+            grid.appendChild(div);
+        });
+    }
+
+    function handleDimChange(type) {
+        const lock = document.getElementById('lockAspect').checked;
+        const wInput = document.getElementById('targetW');
+        const hInput = document.getElementById('targetH');
+        
+        if (!lock) return;
+
+        if (type === 'w') {
+            hInput.value = Math.round(wInput.value / currentAspectRatio);
+        } else {
+            wInput.value = Math.round(hInput.value * currentAspectRatio);
+        }
+    }
+
+    function setPreset(w, h, btn) {
+        document.getElementById('targetW').value = w;
+        document.getElementById('targetH').value = h;
+        currentAspectRatio = w / h;
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    async function startProcessing() {
+        if(selectedFiles.length === 0) { await showAlert("Please upload images first."); return; }
+        
+        const tw = parseInt(document.getElementById('targetW').value);
+        const th = parseInt(document.getElementById('targetH').value);
+        
+        if(!tw || !th || tw <= 0 || th <= 0) { await showAlert("Enter valid width and height."); return; }
+
+        document.getElementById('loadingModal').classList.add('active');
+        processedResults = [];
+        
+        for(let i=0; i < selectedFiles.length; i++) {
+            updateProgress(i, selectedFiles.length);
+            try {
+                const res = await resizeImage(selectedFiles[i], tw, th);
+                processedResults.push(res);
+            } catch(e) { console.error(e); }
+        }
+
+        setTimeout(() => {
+            document.getElementById('loadingModal').classList.remove('active');
+            showResults();
+        }, 500);
+    }
+
+    function resizeImage(file, width, height) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        resolve({ original: file, blob: blob, w: width, h: height });
+                    }, file.type, 0.92);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function updateProgress(current, total) {
+        const pct = Math.round((current / total) * 100);
+        document.getElementById('pFill').style.width = pct + '%';
+        document.getElementById('pText').innerText = `Resizing ${current + 1} of ${total}`;
+    }
+
+    function showResults() {
+        const container = document.getElementById('resultsContainer');
+        const zipBtn = document.getElementById('zipAllBtn');
+        container.innerHTML = '';
+        zipBtn.innerText = `Download All as ZIP (${processedResults.length})`;
+
+        processedResults.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.className = 'result-item';
+
+            // Create a temporary Object URL for the resized image
+            const resizedUrl = URL.createObjectURL(item.blob);
+
+            row.innerHTML = `
+                <div class="result-info">
+                    <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${item.original.name}</div>
+                    <div class="dim-final">${item.w} × ${item.h} px</div>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <button class="view-btn" style="width:auto; padding:8px 10px;" onclick="openResizedViewer('${resizedUrl}', '${item.original.name}')">View</button>
+                    <button class="dl-mini-btn" onclick="saveAs(processedResults[${index}].blob, 'resized_' + processedResults[${index}].original.name)">Save</button>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+        document.getElementById('resultModal').classList.add('active');
+    }
+
+    function openResizedViewer(url, name) {
+        const img = document.getElementById('viewerImage');
+        img.src = url;
+        document.getElementById('viewerName').innerText = "Resized Preview: " + name;
+        document.getElementById('imageViewerModal').classList.add('active');
+    }
+
+    function downloadAllZip() {
+        const zip = new JSZip();
+        processedResults.forEach(item => zip.file("resized_" + item.original.name, item.blob));
+        zip.generateAsync({type:"blob"}).then(content => saveAs(content, "resized_images_batch.zip"));
+    }
+
+    function removeFile(index) { selectedFiles.splice(index, 1); renderGrid(); }
+    function closeResults() { document.getElementById('resultModal').classList.remove('active'); }
+    
+    function openViewer(index) {
+        const file = selectedFiles[index];
+        document.getElementById('viewerImage').src = URL.createObjectURL(file);
+        document.getElementById('viewerName').innerText = "Original: " + file.name;
+        document.getElementById('imageViewerModal').classList.add('active');
+    }
+    
+    function closeViewer() { document.getElementById('imageViewerModal').classList.remove('active'); }
+</script>
+
+<script src="tool-ads.js"></script>
+
+</body>
+</html>

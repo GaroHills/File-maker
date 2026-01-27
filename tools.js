@@ -31,6 +31,10 @@ var manualToolList = [
     {
         "name": "PNG_TO_JPG",
         "url": "png_to_jpg.html"
+    },
+    {
+        "name": "IMG_RESIZE",
+        "url": "img_resize.html"
     }
     // When you paste a new tool here and save the file on your server,
     // it will appear on the dashboard automatically within 30 seconds!
