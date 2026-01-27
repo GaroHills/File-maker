@@ -14,7 +14,7 @@
             --text-light: #64748b;
             --radius: 16px; 
         }
-        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; overscroll-behavior: none; }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 90px; overscroll-behavior: none; }
         
         .container { max-width: 600px; margin: 0 auto; padding: 12px; }
 
@@ -154,6 +154,25 @@
         }
         .touchpad:active { background: #e2e8f0; border-color: var(--primary); color: var(--primary); }
 
+        /* Info Section */
+        .info-section {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid #f1f5f9;
+        }
+        .info-section h3 { margin-top: 0; margin-bottom: 10px; font-size: 15px; color: var(--text); }
+        .info-section ol { padding-left: 20px; color: var(--text-light); font-size: 13px; line-height: 1.6; margin-bottom: 15px; }
+        .tutorial-img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            display: block;
+        }
+
         /* Bottom Action Bar */
         .bottom-bar {
             position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface);
@@ -257,6 +276,19 @@
         <div id="touchPad" class="touchpad">
             Slide here to fine-tune
         </div>
+    </div>
+
+    <!-- NEW: HOW TO USE SECTION -->
+    <div class="info-section">
+        <h3>How to Use</h3>
+        <ol>
+            <li><strong>Select Image:</strong> Tap the button to upload a photo of your ID card.</li>
+            <li><strong>Choose Mode:</strong> Use <em>Standard</em> for straight photos or <em>Perspective</em> to fix tilted/angled photos.</li>
+            <li><strong>Adjust:</strong> In Perspective mode, drag the corners to match the ID card edges. Use the touchpad for precision.</li>
+            <li><strong>Save:</strong> Click "Crop & Save" to download your clean image.</li>
+        </ol>
+        <!-- REPLACE THIS LINK WITH YOUR OWN IMAGE URL -->
+        <img src="https://raw.githubusercontent.com/mrbtool/File-maker/refs/heads/main/Picsart_26-01-28_00-35-29-724.jpg" alt="Example of how to use" class="tutorial-img">
     </div>
 
 </div>
