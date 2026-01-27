@@ -55,5 +55,5 @@ var toolMetadata = {
         category: "Card cropper tools",
         tags: ["Super fast", "2026", "NEW"],
         color: "#00a86b"
-    }
+    },
 };
