@@ -172,6 +172,29 @@
             background: transparent; color: var(--text-light); border: none;
             padding: 10px; font-weight: 600; cursor: pointer; margin-top: 5px; width: 100%;
         }
+        
+        /* Rename Input */
+        .rename-box {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 15px;
+            background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px;
+        }
+        .filename-input {
+            flex: 1; border: none; background: transparent; padding: 12px 0;
+            font-size: 14px; outline: none; color: var(--text); font-weight: 500;
+        }
+        .extension-label {
+            color: var(--text-light); font-size: 14px; font-weight: 600; user-select: none;
+        }
+
+        /* Password Input Styles */
+        .password-input {
+            width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px;
+            box-sizing: border-box; font-size: 16px; text-align: center;
+            outline: none; transition: 0.2s;
+        }
+        .password-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .password-icon { width: 40px; height: 40px; background: #fee2e2; color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto; }
+        
         .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -258,7 +281,7 @@
     <button id="cropBtn" class="crop-btn" onclick="processCrop()">Crop & Convert</button>
 </div>
 
-<!-- Result Modal -->
+<!-- Result/Loading Modal -->
 <div id="resultModal" class="modal-overlay">
     <div class="modal-box">
         <div id="loadingIndicator" style="display:none;">
@@ -268,9 +291,33 @@
         <div id="resultContent" style="display:none;">
             <h3 style="margin:0 0 10px 0; font-size:16px;">Conversion Complete!</h3>
             <img id="finalResult" class="result-img" src="">
-            <button class="crop-btn ready" style="width:100%" onclick="downloadResult()">Download JPG</button>
+            
+            <!-- Rename Input -->
+            <div class="rename-box">
+                <input type="text" id="filenameInput" class="filename-input" placeholder="Enter filename">
+                <span class="extension-label">.jpg</span>
+            </div>
+            
+            <button class="crop-btn ready" style="width:100%" onclick="downloadResult()">Download Image</button>
             <button class="btn-secondary" onclick="closeModal()">Close</button>
         </div>
+    </div>
+</div>
+
+<!-- Password Modal -->
+<div id="passModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="password-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        </div>
+        <h3 style="margin:0 0 5px 0; font-size:16px;">Encrypted PDF</h3>
+        <p style="font-size:13px; color:#64748b; margin-top:0; margin-bottom:15px;">Please enter the password to open this file.</p>
+        
+        <input type="password" id="pdfPassword" class="password-input" placeholder="Enter Password">
+        <p id="passwordError" style="color:#ef4444; font-size:12px; display:none; margin-top:8px; font-weight:600;">Incorrect password. Try again.</p>
+        
+        <button class="crop-btn ready" style="width:100%; margin-top:15px;" onclick="submitPassword()">Unlock</button>
+        <button class="btn-secondary" onclick="cancelPassword()">Cancel</button>
     </div>
 </div>
 
@@ -301,6 +348,9 @@
     let pdfRenderCtx = pdfRenderCanvas.getContext('2d');
     let isPdfLoaded = false;
     
+    // Password Handling
+    let passwordCallback = null;
+    
     let canvasW, canvasH;
     let state = { x: 0, y: 0, scale: 1, lastX: 0, lastY: 0, rotation: 0 };
     let cropBox = { w: 0, h: 0, x: 0, y: 0 };
@@ -330,15 +380,44 @@
 
     async function loadPDF(data) {
         try {
-            document.getElementById('loadingText').innerText = "Rendering PDF...";
+            document.getElementById('loadingText').innerText = "Analyzing PDF...";
             document.getElementById('loadingIndicator').style.display = 'block';
             document.getElementById('resultContent').style.display = 'none';
             document.getElementById('resultModal').classList.add('active');
             
-            pdfDoc = await pdfjsLib.getDocument(data).promise;
+            // Password Interception Logic
+            const loadingTask = pdfjsLib.getDocument(data);
+            
+            loadingTask.onPassword = function(callback, reason) {
+                // If password needed
+                document.getElementById('resultModal').classList.remove('active'); // Hide loading
+                document.getElementById('passModal').classList.add('active'); // Show password prompt
+                document.getElementById('passwordError').style.display = 'none'; // Reset error
+                document.getElementById('pdfPassword').value = '';
+                document.getElementById('pdfPassword').focus();
+                
+                // Check if it's a retry (Incorrect password)
+                if (reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD) {
+                    document.getElementById('passwordError').style.display = 'block';
+                }
+                
+                // Store callback to use in submitPassword()
+                passwordCallback = callback;
+            };
+
+            pdfDoc = await loadingTask.promise;
+            
+            // Success - Hide password modal if open
+            document.getElementById('passModal').classList.remove('active');
+            
+            // Continue Loading
+            document.getElementById('resultModal').classList.add('active');
+            document.getElementById('loadingText').innerText = "Rendering PDF...";
+            
             totalPages = pdfDoc.numPages;
             pageNum = 1;
             
+            // UI Setup
             document.getElementById('emptyState').style.display = 'none';
             const editorEl = document.getElementById('editorContainer');
             editorEl.classList.add('visible');
@@ -356,10 +435,40 @@
             
         } catch (error) {
             console.error(error);
-            alert('Error loading PDF: ' + error.message);
+            // Ignore password cancellation errors
+            if (error.name !== 'PasswordException') {
+                alert('Error loading PDF: ' + error.message);
+            }
             document.getElementById('resultModal').classList.remove('active');
         }
     }
+
+    // --- Password Functions ---
+    function submitPassword() {
+        const pass = document.getElementById('pdfPassword').value;
+        if(passwordCallback) {
+            // Re-show loading spinner while it attempts to unlock
+            document.getElementById('passModal').classList.remove('active');
+            document.getElementById('loadingText').innerText = "Unlocking...";
+            document.getElementById('resultModal').classList.add('active');
+            
+            passwordCallback(pass);
+        }
+    }
+
+    function cancelPassword() {
+        document.getElementById('passModal').classList.remove('active');
+        document.getElementById('fileInput').value = ''; // Reset input
+        passwordCallback = null;
+    }
+    
+    // Support Enter Key in Password Input
+    document.getElementById('pdfPassword').addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            submitPassword();
+        }
+    });
 
     function updatePageControls() {
         const ctrl = document.getElementById('pageControls');
@@ -395,6 +504,7 @@
 
     async function renderPage(num) {
         pdfPageProxy = await pdfDoc.getPage(num);
+        // Preview render at 2x for good speed/quality balance
         const viewport = pdfPageProxy.getViewport({ scale: 2.0 });
         
         pdfRenderCanvas.width = viewport.width;
@@ -633,7 +743,6 @@
             if (currentPreset === 'free') {
                 updateCropBox(); 
             } else {
-                // If standard mode, check simple center snap
                 const cx = canvasW/2, cy = canvasH/2, th = 10;
                 if(Math.abs(state.x - cx) < th) state.x = cx;
                 if(Math.abs(state.y - cy) < th) state.y = cy;
@@ -649,40 +758,20 @@
         alignMsg.style.opacity = 0;
     }
 
-    // --- Improved Zoom with Auto-Center Edge Behavior ---
     function manualZoom(val) {
         state.scale = parseFloat(val);
-        constsrainAndCenter(); // Apply constraints logic
+        constsrainAndCenter(); 
         if (currentPreset === 'free') updateCropBox(); 
         draw();
     }
     
     function constsrainAndCenter() {
-        // Calculate the visual dimensions of the rotated PDF
         const isRotated = (state.rotation / 90) % 2 !== 0;
         const displayW = (isRotated ? pdfRenderCanvas.height : pdfRenderCanvas.width) * state.scale;
         const displayH = (isRotated ? pdfRenderCanvas.width : pdfRenderCanvas.height) * state.scale;
 
-        // 1. Auto Center if Smaller than Canvas
         if (displayW <= canvasW) state.x = canvasW / 2;
         if (displayH <= canvasH) state.y = canvasH / 2;
-
-        // 2. Edge Constraints (Don't let image fly off screen)
-        // Only apply if image is larger than canvas
-        /*
-        if (displayW > canvasW) {
-            const edgeX = displayW / 2;
-            if (state.x - edgeX > canvasW - 20) state.x = canvasW - 20 + edgeX; // Left edge bound
-            if (state.x + edgeX < 20) state.x = 20 - edgeX; // Right edge bound
-        }
-        if (displayH > canvasH) {
-            const edgeY = displayH / 2;
-            if (state.y - edgeY > canvasH - 20) state.y = canvasH - 20 + edgeY;
-            if (state.y + edgeY < 20) state.y = 20 - edgeY;
-        }
-        */
-        // Note: I commented out strict edge constraints as it can conflict with "Free Mode" moving behavior 
-        // if not carefully handled. The "Snap to Center if Smaller" is usually sufficient for good UX.
     }
     
     function adjustZoom(delta) {
@@ -696,52 +785,105 @@
     
     function rotateView() {
         state.rotation = (state.rotation + 90) % 360;
-        // Re-center on rotate for better UX
         state.x = canvasW / 2;
         state.y = canvasH / 2;
         if(currentPreset === 'free') updateCropBox();
         draw();
     }
 
-    function processCrop() {
+    async function processCrop() {
         if(!isPdfLoaded) return;
         document.getElementById('loadingText').innerText = "Processing...";
         document.getElementById('loadingIndicator').style.display = 'block';
         document.getElementById('resultContent').style.display = 'none';
         document.getElementById('resultModal').classList.add('active');
-        setTimeout(() => { generateHighQualityCrop(); }, 100);
+        
+        // Wait briefly for UI to update
+        setTimeout(async () => {
+            await generateHighQualityCrop();
+        }, 100);
     }
 
-    function generateHighQualityCrop() {
-        const sourceCropW = cropBox.w / state.scale;
-        const sourceCropH = cropBox.h / state.scale;
+    async function generateHighQualityCrop() {
+        // RENDER AT HIGH RESOLUTION (Scale 3.0 = ~216 DPI)
+        // This ensures the output is much sharper than the preview canvas
+        const highResScale = 3.0;
+        const viewport = pdfPageProxy.getViewport({ scale: highResScale });
+        
+        const hqCanvas = document.createElement('canvas');
+        hqCanvas.width = viewport.width;
+        hqCanvas.height = viewport.height;
+        const hqCtx = hqCanvas.getContext('2d');
+        
+        // Render PDF to this high-res canvas
+        await pdfPageProxy.render({
+            canvasContext: hqCtx,
+            viewport: viewport
+        }).promise;
+
+        // Now calculate crop coordinates based on the high-res canvas
+        // Current preview scale relative to high-res
+        // The preview canvas was rendered at scale 2.0. The state.scale applies to that preview.
+        // We need to map the visual crop box to the high-res canvas.
+        
+        // Visual (Screen) Math:
+        // Image Center on Screen: (state.x, state.y)
+        // Image Scale on Screen (relative to 2.0 render): state.scale
+        
+        // We need coordinates relative to the UNROTATED original PDF page at scale 3.0.
+        
+        // 1. Determine the "Source Box" in the PDF coordinate space (unscaled, unrotated)
+        // This is tricky because of rotation.
+        // Let's use the visual WYSIWYG approach: Transform the High-Res canvas exactly like the screen
+        // and crop the view.
+        
+        // Calculate Output Resolution
+        // We want the output to match the pixel density of the high-res render
+        // Screen Crop Width in pixels = cropBox.w
+        // Effective Zoom Level = (2.0 * state.scale) vs (3.0)
+        // Let's create an output canvas sized proportionally to the high-res render.
+        
+        // Ratio between High-Res Canvas and Preview Canvas (which is scale 2.0)
+        const ratio = highResScale / 2.0; 
+        
+        // Effective scale of High-Res canvas on screen would be: state.scale / ratio
+        // So to map screen pixels to high-res pixels, we divide by (state.scale / ratio)
+        // i.e., multiply by (ratio / state.scale)
+        
+        const conversionFactor = ratio / state.scale;
+        
+        const outputW = cropBox.w * conversionFactor;
+        const outputH = cropBox.h * conversionFactor;
         
         const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = sourceCropW;
-        finalCanvas.height = sourceCropH;
+        finalCanvas.width = outputW;
+        finalCanvas.height = outputH;
         const ctx = finalCanvas.getContext('2d');
         
+        // Fill White Background (for transparency)
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
         
+        // Apply Transforms to align the High-Res PDF to the crop window
         ctx.save();
-        ctx.translate(sourceCropW / 2, sourceCropH / 2);
+        
+        // Move origin to center of output
+        ctx.translate(outputW / 2, outputH / 2);
+        
+        // Apply Rotation
         ctx.rotate(state.rotation * Math.PI / 180);
         
+        // Calculate offset of image center from crop center (in screen pixels)
         const cropCX = cropBox.x + cropBox.w/2;
         const cropCY = cropBox.y + cropBox.h/2;
         const diffX = state.x - cropCX;
         const diffY = state.y - cropCY;
         
-        ctx.translate(diffX / state.scale, diffY / state.scale);
+        // Convert this offset to High-Res pixels
+        ctx.translate(diffX * conversionFactor, diffY * conversionFactor);
         
-        // Output White Background
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-pdfRenderCanvas.width / 2, -pdfRenderCanvas.height / 2, pdfRenderCanvas.width, pdfRenderCanvas.height);
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(pdfRenderCanvas, -pdfRenderCanvas.width / 2, -pdfRenderCanvas.height / 2);
+        // Draw the High-Res PDF centered
+        ctx.drawImage(hqCanvas, -hqCanvas.width / 2, -hqCanvas.height / 2);
         
         ctx.restore();
         
@@ -753,11 +895,23 @@
         document.getElementById('loadingIndicator').style.display = 'none';
         document.getElementById('resultContent').style.display = 'block';
         document.getElementById('finalResult').src = url;
+        
+        // Auto-fill filename with default
+        document.getElementById('filenameInput').value = `Cropped_Page_${pageNum}`;
+        
         window.finalBlobUrl = url;
     }
 
     function downloadResult() {
-        if(window.finalBlobUrl) saveAs(window.finalBlobUrl, 'pdf_crop_page_' + pageNum + '.jpg');
+        if(!window.finalBlobUrl) return;
+        
+        // Get name from input or use default
+        let name = document.getElementById('filenameInput').value.trim();
+        // Sanitize
+        name = name.replace(/[^a-z0-9_\-\s]/gi, '');
+        if(!name) name = `Cropped_Page_${pageNum}`;
+        
+        saveAs(window.finalBlobUrl, name + '.jpg');
     }
 
     function closeModal() {
