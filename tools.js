@@ -39,6 +39,10 @@ var manualToolList = [
     {
         "name": "ID_CARD_CROPPER",
         "url": "id_card_cropper.html",
+    },
+    {
+        "name": "PDF_CROPPER",
+        "url": "pdf_cropper.html",
     }
     // When you paste a new tool here and save the file on your server,
     // it will appear on the dashboard automatically within 30 seconds!
