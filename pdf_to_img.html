@@ -98,6 +98,15 @@
             font-size: 12px; font-weight: 600; width: 100%;
         }
 
+        /* Info Section */
+        .info-section {
+            background: var(--surface); padding: 20px; border-radius: var(--radius);
+            margin-top: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #f1f5f9;
+        }
+        .info-section h3 { margin-top: 0; margin-bottom: 10px; font-size: 16px; color: var(--text); }
+        .info-section ol { padding-left: 20px; color: #64748b; font-size: 13px; line-height: 1.6; margin-bottom: 15px; }
+        .tutorial-img { width: 100%; height: auto; border-radius: 8px; border: 1px solid #e2e8f0; display: block; }
+
         /* Modals */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -120,7 +129,7 @@
 
         /* Custom Alert Styles */
         .alert-icon { font-size: 40px; margin-bottom: 10px; display: block; }
-        .alert-btns { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
+        .alert-btns { display: flex; gap: 10px; margin-top: 20px; justify-content: center; width: 100%; }
         .btn-secondary { background: transparent; border: 1px solid #cbd5e1; color: #64748b; padding: 12px 20px; border-radius: 50px; font-weight: 600; cursor: pointer; flex: 1; }
 
         /* Image Viewer */
@@ -130,6 +139,25 @@
             position: absolute; top: -40px; right: 0; color: white;
             font-size: 30px; cursor: pointer; font-weight: bold; background: none; border: none;
         }
+
+        /* Password Input Style */
+        .password-input {
+            width: 100%; box-sizing: border-box; padding: 12px;
+            border: 2px solid #e2e8f0; border-radius: 8px;
+            font-size: 16px; text-align: center; margin: 10px 0;
+            outline: none; transition: 0.2s;
+        }
+        .password-input:focus { border-color: var(--primary); }
+        .error-text { color: #ef4444; font-size: 13px; margin-top: 5px; font-weight: 600; display: none; }
+
+        /* Password Hints Box */
+        .password-hint {
+            background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px;
+            padding: 12px; margin-bottom: 10px; text-align: left;
+        }
+        .hint-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+        .hint-list { margin: 0; padding-left: 15px; color: #64748b; font-size: 11px; line-height: 1.5; }
+        .hint-list li { margin-bottom: 2px; }
 
     </style>
 </head>
@@ -164,6 +192,19 @@
 
     <!-- Results Grid -->
     <div id="resultsGrid" class="results-grid"></div>
+
+    <!-- How To Use Section -->
+    <div class="info-section">
+        <h3>How to Use</h3>
+        <ol>
+            <li><strong>Select PDF:</strong> Tap the box to upload your file (Password protected files supported).</li>
+            <li><strong>Choose Quality:</strong> Select Standard for speed or Ultra for high-resolution images.</li>
+            <li><strong>Convert:</strong> Click the button to process all pages.</li>
+            <li><strong>Download:</strong> Save individual pages or view them instantly.</li>
+        </ol>
+        <img src="https://raw.githubusercontent.com/mrbtool/File-maker/refs/heads/main/Picsart_26-01-28_00-35-29-724.jpg" alt="How to use tutorial" class="tutorial-img">
+    </div>
+
 </div>
 
 <!-- Progress Modal -->
@@ -190,6 +231,32 @@
     </div>
 </div>
 
+<!-- Password Modal -->
+<div id="passwordModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="alert-icon">🔒</div>
+        <h3 style="margin:0 0 5px 0;">Encrypted PDF</h3>
+        <p style="color:#64748b; margin:0 0 15px 0; font-size:14px;">This file is password protected.</p>
+        
+        <!-- Password Hints -->
+        <div class="password-hint">
+            <div class="hint-title">Common Passwords:</div>
+            <ul class="hint-list">
+                <li><strong>Aadhar:</strong> First 4 letters of Name (CAPS) + Year (e.g. ANIS1999)</li>
+                <li><strong>PAN:</strong> Date of Birth (DDMMYYYY)</li>
+            </ul>
+        </div>
+
+        <input type="password" id="pdfPassword" class="password-input" placeholder="Enter Password">
+        <div id="passwordError" class="error-text">Incorrect password. Try again.</div>
+
+        <div class="alert-btns">
+            <button class="btn-secondary" onclick="cancelPassword()">Cancel</button>
+            <button class="action-btn" onclick="submitPassword()">Unlock</button>
+        </div>
+    </div>
+</div>
+
 <!-- Image Viewer Modal -->
 <div id="imageViewerModal" class="modal-overlay" onclick="closeViewer()">
     <div class="viewer-wrapper" onclick="event.stopPropagation()">
@@ -204,6 +271,7 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
     let selectedFile = null;
+    let passwordCallback = null; // To store the function to call with password
 
     // --- Custom Alert Logic ---
     function showAlert(msg) {
@@ -231,6 +299,32 @@
         document.getElementById('resultsGrid').innerHTML = '';
     }
 
+    // --- Password Handling ---
+    function submitPassword() {
+        const pass = document.getElementById('pdfPassword').value;
+        if (passwordCallback) {
+            // Hide password modal and show loading again (briefly, until logic decides what to do)
+            document.getElementById('passwordModal').classList.remove('active');
+            document.getElementById('loadingModal').classList.add('active');
+            passwordCallback(pass);
+        }
+    }
+
+    function cancelPassword() {
+        document.getElementById('passwordModal').classList.remove('active');
+        document.getElementById('loadingModal').classList.remove('active');
+        document.getElementById('fileInput').value = ''; // Reset input
+        passwordCallback = null;
+    }
+
+    // Add Enter key support
+    document.getElementById('pdfPassword').addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            submitPassword();
+        }
+    });
+
     // --- Conversion Logic ---
     async function startConversion() {
         if (!selectedFile) {
@@ -244,16 +338,47 @@
         document.getElementById('loadingModal').classList.add('active');
         const pFill = document.getElementById('pFill');
         const pText = document.getElementById('pText');
+        pFill.style.width = '0%';
+        pText.innerText = 'Initializing...';
         
         try {
-            // Read PDF
+            // Read PDF as ArrayBuffer
             const arrayBuffer = await selectedFile.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            
+            // Create Loading Task
+            const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+
+            // Hook into Password Request
+            loadingTask.onPassword = function(callback, reason) {
+                // If password needed
+                document.getElementById('loadingModal').classList.remove('active'); // Hide loading
+                document.getElementById('passwordModal').classList.add('active'); // Show password prompt
+                
+                // Reset fields
+                document.getElementById('pdfPassword').value = '';
+                document.getElementById('passwordError').style.display = 'none';
+                document.getElementById('pdfPassword').focus();
+
+                // Check if this is a retry due to incorrect password
+                if (reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD) {
+                    document.getElementById('passwordError').style.display = 'block';
+                }
+
+                // Store callback
+                passwordCallback = callback;
+            };
+
+            const pdf = await loadingTask.promise;
             const totalPages = pdf.numPages;
 
             const grid = document.getElementById('resultsGrid');
             grid.innerHTML = '';
             grid.classList.add('active');
+
+            // Hide password modal just in case it was open
+            document.getElementById('passwordModal').classList.remove('active');
+            // Ensure loading modal is visible again for the rendering part
+            document.getElementById('loadingModal').classList.add('active');
 
             for (let i = 1; i <= totalPages; i++) {
                 // Update Progress
@@ -276,7 +401,7 @@
                 const imgUrl = canvas.toDataURL('image/png');
                 const fileName = `page_${i}.png`;
 
-                // Create Result Card (No Image Preview)
+                // Create Result Card (No Image Preview for speed)
                 const card = document.createElement('div');
                 card.className = 'file-card';
                 card.innerHTML = `
@@ -304,7 +429,10 @@
         } catch (error) {
             console.error(error);
             document.getElementById('loadingModal').classList.remove('active');
-            showAlert("Error parsing PDF. It might be corrupted or password protected.");
+            // Only show alert if it's not a password error (handled by onPassword)
+            if (error.name !== 'PasswordException') {
+                showAlert("Error parsing PDF. It might be corrupted.");
+            }
         }
     }
 
