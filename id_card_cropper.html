@@ -106,7 +106,11 @@
             justify-content: center;
             align-items: center;
         }
-        canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+        /* ADDED: Transition for rotation animation */
+        canvas { 
+            display: block; width: 100%; height: 100%; object-fit: contain; 
+            transform-origin: center center;
+        }
         
         .empty-state {
             background: var(--surface); border-radius: var(--radius); padding: 30px 20px;
@@ -124,9 +128,17 @@
             width: 32px; height: 32px; background: #f1f5f9; color: var(--text);
             border: 1px solid #e2e8f0; border-radius: 8px; font-size: 18px; line-height: 1;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-family: monospace; padding-bottom: 4px;
+            font-family: monospace; padding-bottom: 4px; flex-shrink: 0;
         }
         .zoom-btn:active { background: #e2e8f0; transform: scale(0.95); }
+
+        /* ADDED: Rotate Button Specific Styles */
+        .rotate-separator {
+            width: 1px; height: 24px; background: #e2e8f0; margin: 0 4px;
+        }
+        .rotate-icon {
+            width: 16px; height: 16px; stroke-width: 2.5; padding-top: 3px;
+        }
 
         /* Fine Tune Controls */
         .fine-tune-box {
@@ -263,6 +275,14 @@
         <button class="zoom-btn" onclick="adjustZoom(-0.1)">−</button>
         <input type="range" id="zoomSlider" min="0.1" max="3.0" step="0.01" value="1" oninput="manualZoom(this.value)">
         <button class="zoom-btn" onclick="adjustZoom(0.1)">+</button>
+        
+        <!-- NEW: Rotate Controls -->
+        <div class="rotate-separator"></div>
+        <button class="zoom-btn" onclick="rotateImage()" title="Rotate 90°">
+            <svg class="rotate-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+        </button>
     </div>
 
     <!-- FINE TUNE CONTROLS -->
@@ -287,7 +307,6 @@
             <li><strong>Adjust:</strong> In Perspective mode, drag the corners to match the ID card edges. Use the touchpad for precision.</li>
             <li><strong>Save:</strong> Click "Crop & Save" to download your clean image.</li>
         </ol>
-        <!-- REPLACE THIS LINK WITH YOUR OWN IMAGE URL -->
         <img src="https://raw.githubusercontent.com/mrbtool/File-maker/refs/heads/main/Picsart_26-01-28_00-35-29-724.jpg" alt="Example of how to use" class="tutorial-img">
     </div>
 
@@ -334,6 +353,7 @@
     let img = new Image();
     let imgLoaded = false;
     let canvasW, canvasH;
+    let isRotationAnim = false; // Flag to prevent double clicks during animation
 
     // Standard Mode State
     let stdState = { x: 0, y: 0, scale: 1, lastX: 0, lastY: 0, initialDist: 0, initialScale: 1 };
@@ -402,6 +422,12 @@
 
     img.onload = function() {
         imgLoaded = true;
+        
+        // Reset Visual Rotation Properties when image loads
+        canvas.style.transition = 'none';
+        canvas.style.transform = 'none';
+        isRotationAnim = false;
+
         document.getElementById('emptyState').style.display = 'none';
         document.getElementById('editorContainer').style.display = 'flex';
         document.getElementById('zoomBox').style.display = 'flex';
@@ -490,6 +516,9 @@
             ctx.save();
             ctx.translate(stdState.x, stdState.y);
             ctx.scale(stdState.scale, stdState.scale);
+            // High quality smoothing for display
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, -img.width / 2, -img.height / 2);
             ctx.restore();
 
@@ -510,7 +539,11 @@
             
         } else {
             // Perspective Mode
+            ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, imgDisplayRect.x, imgDisplayRect.y, imgDisplayRect.w, imgDisplayRect.h);
+            ctx.restore();
 
             // Connect lines
             ctx.beginPath();
@@ -696,6 +729,41 @@
         manualZoom(newVal);
     }
 
+    // --- Rotate Logic (NEW) ---
+    function rotateImage() {
+        if (!imgLoaded || isRotationAnim) return;
+        isRotationAnim = true;
+
+        // 1. Smooth Visual Animation
+        // We use CSS transition to rotate the canvas element
+        canvas.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        canvas.style.transform = 'rotate(90deg)';
+
+        // 2. Physical Rotation after animation completes
+        setTimeout(() => {
+            // Create an offscreen canvas to perform the rotation
+            const offCanvas = document.createElement('canvas');
+            // Swap width and height for 90 degree rotation
+            offCanvas.width = img.height;
+            offCanvas.height = img.width;
+            
+            const offCtx = offCanvas.getContext('2d');
+            offCtx.imageSmoothingEnabled = true;
+            offCtx.imageSmoothingQuality = 'high';
+            
+            // Move origin to center, rotate, draw image offset by half size
+            offCtx.translate(offCanvas.width / 2, offCanvas.height / 2);
+            offCtx.rotate(90 * Math.PI / 180);
+            offCtx.drawImage(img, -img.width / 2, -img.height / 2);
+
+            // Update source image with the rotated version
+            // This triggers img.onload, which resets the state and clears the CSS transform
+            img.src = offCanvas.toDataURL('image/jpeg', 1.0);
+            
+            // isRotationAnim set to false in img.onload
+        }, 300); // Wait for 300ms CSS transition
+    }
+
     // --- Remote Control Logic ---
     function selectRemoteCorner(index) {
         activeRemoteCorner = (activeRemoteCorner === index) ? -1 : index;
@@ -771,39 +839,61 @@
         }
     }
 
+    // UPDATED: High Quality Standard Crop
     function cropStandard() {
+        // 1. Calculate the offset of the Image Top-Left relative to the Canvas Center
+        // stdState.x, stdState.y is where the center of the image is on screen
         const imgTLx = stdState.x - (img.width * stdState.scale) / 2;
         const imgTLy = stdState.y - (img.height * stdState.scale) / 2;
+
+        // 2. Map the screen's cropBox coordinates back to the original image pixels
+        // (cropBox.x - imgTLx) gives the distance in "zoomed screen pixels"
+        // Divide by stdState.scale to get "original image pixels"
         const sourceX = (cropBox.x - imgTLx) / stdState.scale;
         const sourceY = (cropBox.y - imgTLy) / stdState.scale;
+        
+        // Map the dimensions
         const sourceW = cropBox.w / stdState.scale;
         const sourceH = cropBox.h / stdState.scale;
 
-        const outW = 1000;
-        const outH = outW / PRESETS[currentPreset].ratio;
+        // 3. Create canvas with exact dimensions of the selected area (1:1 Resolution)
         const cvs = document.createElement('canvas');
-        cvs.width = outW; cvs.height = outH;
-        cvs.getContext('2d').drawImage(img, sourceX, sourceY, sourceW, sourceH, 0, 0, outW, outH);
-        displayResult(cvs.toDataURL('image/jpeg', 0.95));
+        cvs.width = sourceW;
+        cvs.height = sourceH;
+        
+        const ctx = cvs.getContext('2d');
+        // Ensure best interpolation
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Draw the slice
+        ctx.drawImage(img, sourceX, sourceY, sourceW, sourceH, 0, 0, sourceW, sourceH);
+        
+        // Export at 1.0 (Maximum Quality)
+        displayResult(cvs.toDataURL('image/jpeg', 1.0));
     }
 
+    // UPDATED: High Quality Perspective Crop
     function cropPerspective() {
         const sortedByY = [...corners].sort((a,b) => a.y - b.y);
         const topRow = sortedByY.slice(0, 2).sort((a,b) => a.x - b.x); 
         const botRow = sortedByY.slice(2, 4).sort((a,b) => a.x - b.x); 
         const orderedCorners = [topRow[0], topRow[1], botRow[1], botRow[0]];
 
-        // Calculate source corners based on current display rect and zoom level
+        // Calculate source corners relative to the ORIGINAL image
+        // We divide by imgDisplayRect.scale to un-zoom the coordinates
         const srcCorners = orderedCorners.map(c => ({
             x: (c.x - imgDisplayRect.x) / imgDisplayRect.scale,
             y: (c.y - imgDisplayRect.y) / imgDisplayRect.scale
         }));
 
+        // Calculate actual pixel distances in the original image
         const wTop = Math.hypot(srcCorners[1].x - srcCorners[0].x, srcCorners[1].y - srcCorners[0].y);
         const wBot = Math.hypot(srcCorners[2].x - srcCorners[3].x, srcCorners[2].y - srcCorners[3].y);
         const hLeft = Math.hypot(srcCorners[3].x - srcCorners[0].x, srcCorners[3].y - srcCorners[0].y);
         const hRight = Math.hypot(srcCorners[2].x - srcCorners[1].x, srcCorners[2].y - srcCorners[1].y);
         
+        // Set output canvas to the maximum detected resolution
         const outW = Math.round(Math.max(wTop, wBot));
         const outH = Math.round(Math.max(hLeft, hRight));
 
@@ -856,7 +946,8 @@
         outCtx.putImageData(outData, 0, 0);
         document.getElementById('loadingIndicator').style.display = 'none';
         document.getElementById('resultContent').style.display = 'block';
-        displayResult(outCvs.toDataURL('image/jpeg', 0.95));
+        // Export at 1.0 (Maximum Quality)
+        displayResult(outCvs.toDataURL('image/jpeg', 1.0));
     }
 
     function getHomographyMatrix(sw, sh, src, dw, dh) {
