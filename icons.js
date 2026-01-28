@@ -332,4 +332,38 @@ const toolIcons = {
 
 </svg>`,
 
+    "pdf_cropper": `<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- PDF Document -->
+  <path d="M28 12h48l24 24v80a8 8 0 0 1-8 8H28a8 8 0 0 1-8-8V20a8 8 0 0 1 8-8z"
+        fill="#ffffff" stroke="#d32f2f" stroke-width="4"/>
+
+  <!-- Folded Corner -->
+  <path d="M76 12v24h24"
+        fill="#ffcdd2" stroke="#d32f2f" stroke-width="4"/>
+
+  <!-- PDF Text -->
+  <rect x="36" y="44" width="56" height="20" rx="4" fill="#d32f2f"/>
+  <text x="64" y="59" text-anchor="middle"
+        font-size="14" font-weight="bold"
+        fill="#ffffff" font-family="Arial, sans-serif">
+    PDF
+  </text>
+
+  <!-- Crop Box (Joined Corner Lines) -->
+  <!-- Top Left -->
+  <path d="M36 76h10M36 76v10"
+        stroke="#b71c1c" stroke-width="3" stroke-linecap="round"/>
+  <!-- Top Right -->
+  <path d="M92 76h-10M92 76v10"
+        stroke="#b71c1c" stroke-width="3" stroke-linecap="round"/>
+  <!-- Bottom Left -->
+  <path d="M36 108h10M36 108v-10"
+        stroke="#b71c1c" stroke-width="3" stroke-linecap="round"/>
+  <!-- Bottom Right -->
+  <path d="M92 108h-10M92 108v-10"
+        stroke="#b71c1c" stroke-width="3" stroke-linecap="round"/>
+
+</svg>`,    
+
 };
