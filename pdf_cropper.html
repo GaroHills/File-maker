@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pro PDF Cropper</title>
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        :root { 
+            --primary: #2563eb; 
+            --bg: #f8fafc; 
+            --surface: #ffffff; 
+            --text: #0f172a; 
+            --text-light: #64748b;
+            --radius: 16px; 
+        }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 90px; overscroll-behavior: none; }
+        
+        .container { max-width: 600px; margin: 0 auto; padding: 12px; }
+
+        /* Header Layout */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .app-title { font-size: 16px; font-weight: 800; color: var(--text); margin: 0; }
+        
+        /* Compact Upload Button */
+        .mini-upload-btn {
+            background: var(--surface);
+            border: 1px solid #e2e8f0;
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: 0.2s;
+        }
+        .mini-upload-btn:active { transform: scale(0.96); background: #f8fafc; }
+        input[type="file"] { display: none; }
+
+        /* Page Controls */
+        .page-controls {
+            display: flex; align-items: center; justify-content: center; gap: 15px;
+            background: var(--surface); padding: 8px; border-radius: 12px;
+            margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: none; 
+            animation: slideDown 0.3s ease;
+        }
+        .page-btn {
+            background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 8px;
+            color: var(--text); font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .page-info { font-size: 13px; font-weight: 600; color: var(--text-light); }
+
+        /* Preset Scroll Bar */
+        .preset-bar {
+            overflow-x: auto; white-space: nowrap; padding-bottom: 5px; margin-bottom: 10px;
+            scrollbar-width: none; display: none; transition: opacity 0.3s ease;
+        }
+        .preset-bar.visible { display: block; animation: fadeIn 0.5s ease; }
+        .preset-bar::-webkit-scrollbar { display: none; }
+
+        .preset-chip {
+            display: inline-block; padding: 6px 14px; background: var(--surface);
+            border: 1px solid #e2e8f0; border-radius: 50px; font-size: 12px;
+            font-weight: 600; color: var(--text-light); margin-right: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .preset-chip.active {
+            background: var(--primary); color: white; border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+        }
+
+        /* Editor Area */
+        .editor-wrapper {
+            background: #1e293b; border-radius: var(--radius); overflow: hidden;
+            position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            margin-bottom: 10px; display: none; touch-action: none;
+            height: 55vh; 
+            max-height: 500px;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+        .editor-wrapper.visible { display: flex !important; animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        
+        canvas { 
+            display: block; width: 100%; height: 100%; object-fit: contain; 
+            transform-origin: center center;
+        }
+        
+        .empty-state {
+            background: var(--surface); border-radius: var(--radius); padding: 40px 20px;
+            text-align: center; border: 2px dashed #cbd5e1; color: var(--text-light); margin-bottom: 10px;
+            transition: opacity 0.3s;
+        }
+        .empty-icon { width: 48px; height: 48px; margin-bottom: 10px; color: #cbd5e1; }
+
+        /* Bottom Controls */
+        .slider-box {
+            background: var(--surface); padding: 10px 15px; border-radius: 12px; margin-bottom: 10px;
+            display: none; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .slider-box.visible { display: flex; animation: slideUp 0.4s ease; }
+        input[type=range] { flex:1; accent-color: var(--primary); cursor: pointer; }
+        
+        .zoom-btn {
+            width: 32px; height: 32px; background: #f1f5f9; color: var(--text);
+            border: 1px solid #e2e8f0; border-radius: 8px; font-size: 18px; line-height: 1;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-family: monospace; padding-bottom: 4px; flex-shrink: 0;
+        }
+        .zoom-btn:active { background: #e2e8f0; transform: scale(0.95); }
+
+        .rotate-separator { width: 1px; height: 24px; background: #e2e8f0; margin: 0 4px; }
+        .rotate-icon { width: 16px; height: 16px; stroke-width: 2.5; padding-top: 3px; }
+
+        /* Info Section */
+        .info-section {
+            background: var(--surface); padding: 20px; border-radius: var(--radius);
+            margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #f1f5f9;
+        }
+        .info-section h3 { margin-top: 0; margin-bottom: 10px; font-size: 15px; color: var(--text); }
+        .info-section ol { padding-left: 20px; color: var(--text-light); font-size: 13px; line-height: 1.6; margin-bottom: 15px; }
+
+        /* Bottom Action Bar */
+        .bottom-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface);
+            padding: 10px 15px; box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+            box-sizing: border-box; display: flex; gap: 10px; z-index: 50; border-top: 1px solid #f1f5f9;
+        }
+
+        .crop-btn {
+            flex: 1; background: var(--primary); color: white; border: none;
+            padding: 12px; border-radius: 50px; font-size: 15px; font-weight: 700;
+            cursor: pointer; opacity: 0.5; pointer-events: none; transition: 0.2s;
+        }
+        .crop-btn.ready { opacity: 1; pointer-events: auto; }
+        .crop-btn:active { transform: scale(0.98); }
+
+        /* Feedback Overlay */
+        .alignment-feedback {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            pointer-events: none; color: white; font-weight: bold; font-size: 12px;
+            background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 4px;
+            opacity: 0; transition: opacity 0.2s;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: white; width: 85%; max-width: 350px;
+            border-radius: 20px; padding: 20px; text-align: center;
+        }
+        .result-img { max-width: 100%; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 15px; max-height: 50vh; object-fit: contain; }
+        .btn-secondary {
+            background: transparent; color: var(--text-light); border: none;
+            padding: 10px; font-weight: 600; cursor: pointer; margin-top: 5px; width: 100%;
+        }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto 10px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <h1 class="app-title">PDF Cropper</h1>
+        <div class="mini-upload-btn" onclick="document.getElementById('fileInput').click()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"></path></svg>
+            Select PDF
+        </div>
+    </div>
+    <input type="file" id="fileInput" accept="application/pdf" onchange="handleFile(this)">
+
+    <!-- Page Controls -->
+    <div id="pageControls" class="page-controls">
+        <button class="page-btn" id="prevPageBtn" onclick="changePage(-1)">&lt;</button>
+        <span class="page-info" id="pageInfo">Page 1 of 1</span>
+        <button class="page-btn" id="nextPageBtn" onclick="changePage(1)">&gt;</button>
+    </div>
+
+    <!-- ASPECT RATIO PRESETS -->
+    <div id="presetBar" class="preset-bar">
+        <div class="preset-chip active" onclick="setPreset('free', this)">Free (Custom)</div>
+        <div class="preset-chip" onclick="setPreset('square', this)">Square</div>
+        <div class="preset-chip" onclick="setPreset('a4', this)">A4</div>
+        <div class="preset-chip" onclick="setPreset('4:3', this)">4:3</div>
+        <div class="preset-chip" onclick="setPreset('16:9', this)">16:9</div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" onclick="document.getElementById('fileInput').click()">
+        <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        <div style="font-weight:600; color:var(--text)">No PDF Selected</div>
+        <div style="font-size:13px; margin-top:4px">Tap to browse files</div>
+    </div>
+
+    <!-- Editor Canvas -->
+    <div id="editorContainer" class="editor-wrapper">
+        <canvas id="cropCanvas"></canvas>
+        <div id="alignMsg" class="alignment-feedback">CENTER SNAP</div>
+    </div>
+
+    <!-- Zoom Controls -->
+    <div class="slider-box" id="zoomBox">
+        <span style="font-size:12px; font-weight:600; color:#64748b; width:40px;">Zoom</span>
+        <button class="zoom-btn" onclick="adjustZoom(-0.1)">−</button>
+        <input type="range" id="zoomSlider" min="0.1" max="3.0" step="0.01" value="1" oninput="manualZoom(this.value)">
+        <button class="zoom-btn" onclick="adjustZoom(0.1)">+</button>
+        
+        <div class="rotate-separator"></div>
+        <button class="zoom-btn" onclick="rotateView()" title="Rotate View">
+            <svg class="rotate-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Info Section (Hidden after load on mobile) -->
+    <div id="infoSection" class="info-section">
+        <h3>How to Use</h3>
+        <ol>
+            <li><strong>Upload PDF:</strong> Select a PDF file from your device.</li>
+            <li><strong>Select Page:</strong> If the PDF has multiple pages, use arrows to select one.</li>
+            <li><strong>Free Crop:</strong> Drag handles to resize. The box sticks to the image when you zoom/pan!</li>
+            <li><strong>Save:</strong> Click "Crop & Convert" to get a high-quality JPG.</li>
+        </ol>
+    </div>
+
+</div>
+
+<!-- Fixed Bottom Bar -->
+<div class="bottom-bar">
+    <button id="cropBtn" class="crop-btn" onclick="processCrop()">Crop & Convert</button>
+</div>
+
+<!-- Result Modal -->
+<div id="resultModal" class="modal-overlay">
+    <div class="modal-box">
+        <div id="loadingIndicator" style="display:none;">
+            <div class="spinner"></div>
+            <p id="loadingText" style="font-size:14px; color:#64748b">Loading PDF...</p>
+        </div>
+        <div id="resultContent" style="display:none;">
+            <h3 style="margin:0 0 10px 0; font-size:16px;">Conversion Complete!</h3>
+            <img id="finalResult" class="result-img" src="">
+            <button class="crop-btn ready" style="width:100%" onclick="downloadResult()">Download JPG</button>
+            <button class="btn-secondary" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- PDF.js Configuration ---
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    // --- Config & State ---
+    const PRESETS = {
+        'free': { ratio: 0, label: 'Free' },
+        'square': { ratio: 1.0, label: 'Square' },
+        'a4': { ratio: 0.707, label: 'A4' }, 
+        '4:3': { ratio: 1.33, label: '4:3' },
+        '16:9': { ratio: 1.77, label: '16:9' }
+    };
+
+    let currentPreset = 'free';
+    
+    const displayCanvas = document.getElementById('cropCanvas');
+    const displayCtx = displayCanvas.getContext('2d');
+    const alignMsg = document.getElementById('alignMsg');
+    
+    let pdfDoc = null;
+    let pageNum = 1;
+    let totalPages = 0;
+    let pdfPageProxy = null;
+    let pdfRenderCanvas = document.createElement('canvas'); 
+    let pdfRenderCtx = pdfRenderCanvas.getContext('2d');
+    let isPdfLoaded = false;
+    
+    let canvasW, canvasH;
+    let state = { x: 0, y: 0, scale: 1, lastX: 0, lastY: 0, rotation: 0 };
+    let cropBox = { w: 0, h: 0, x: 0, y: 0 };
+    
+    let freeCropRel = null; 
+    
+    let isDragging = false;
+    let activeHandle = null; 
+    let isSnappedX = false, isSnappedY = false;
+
+    // --- Init & File Handling ---
+    function handleFile(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            if (file.type !== 'application/pdf') {
+                alert('Please select a valid PDF file.');
+                return;
+            }
+            const fileReader = new FileReader();
+            fileReader.onload = function() {
+                const typedarray = new Uint8Array(this.result);
+                loadPDF(typedarray);
+            };
+            fileReader.readAsArrayBuffer(file);
+        }
+    }
+
+    async function loadPDF(data) {
+        try {
+            document.getElementById('loadingText').innerText = "Rendering PDF...";
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultContent').style.display = 'none';
+            document.getElementById('resultModal').classList.add('active');
+            
+            pdfDoc = await pdfjsLib.getDocument(data).promise;
+            totalPages = pdfDoc.numPages;
+            pageNum = 1;
+            
+            document.getElementById('emptyState').style.display = 'none';
+            const editorEl = document.getElementById('editorContainer');
+            editorEl.classList.add('visible');
+            document.getElementById('presetBar').classList.add('visible');
+            document.getElementById('zoomBox').classList.add('visible');
+            
+            await renderPage(pageNum);
+            
+            isPdfLoaded = true;
+            updatePageControls();
+            document.getElementById('cropBtn').classList.add('ready');
+            
+            if(window.innerWidth < 600) document.getElementById('infoSection').style.display = 'none';
+            document.getElementById('resultModal').classList.remove('active');
+            
+        } catch (error) {
+            console.error(error);
+            alert('Error loading PDF: ' + error.message);
+            document.getElementById('resultModal').classList.remove('active');
+        }
+    }
+
+    function updatePageControls() {
+        const ctrl = document.getElementById('pageControls');
+        const info = document.getElementById('pageInfo');
+        const prev = document.getElementById('prevPageBtn');
+        const next = document.getElementById('nextPageBtn');
+        
+        if (totalPages > 1) {
+            ctrl.style.display = 'flex';
+            info.innerText = `Page ${pageNum} of ${totalPages}`;
+            prev.disabled = pageNum <= 1;
+            next.disabled = pageNum >= totalPages;
+        } else {
+            ctrl.style.display = 'none';
+        }
+    }
+
+    async function changePage(offset) {
+        if (!pdfDoc) return;
+        const newPage = pageNum + offset;
+        if (newPage >= 1 && newPage <= totalPages) {
+            document.getElementById('loadingText').innerText = "Loading Page...";
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultModal').classList.add('active');
+            
+            pageNum = newPage;
+            updatePageControls();
+            await renderPage(pageNum);
+            
+            document.getElementById('resultModal').classList.remove('active');
+        }
+    }
+
+    async function renderPage(num) {
+        pdfPageProxy = await pdfDoc.getPage(num);
+        const viewport = pdfPageProxy.getViewport({ scale: 2.0 });
+        
+        pdfRenderCanvas.width = viewport.width;
+        pdfRenderCanvas.height = viewport.height;
+        
+        await pdfPageProxy.render({ canvasContext: pdfRenderCtx, viewport: viewport }).promise;
+        
+        initEditorState();
+        draw();
+    }
+
+    function initEditorState() {
+        const container = document.getElementById('editorContainer');
+        const maxAllowedH = window.innerHeight * 0.55; 
+        
+        canvasW = container.clientWidth;
+        if(canvasW === 0) canvasW = window.innerWidth - 24;
+
+        const pdfAspect = pdfRenderCanvas.width / pdfRenderCanvas.height;
+        let h = canvasW / pdfAspect; 
+        if (h > maxAllowedH) h = maxAllowedH; 
+        if (h < 250) h = 250;
+        
+        canvasH = h;
+        const dpr = window.devicePixelRatio || 1;
+        displayCanvas.width = canvasW * dpr;
+        displayCanvas.height = canvasH * dpr;
+        displayCanvas.style.width = canvasW + 'px';
+        displayCanvas.style.height = canvasH + 'px';
+        
+        displayCtx.setTransform(1, 0, 0, 1, 0, 0);
+        displayCtx.scale(dpr, dpr);
+
+        const fitScale = (canvasW * 0.9) / pdfRenderCanvas.width;
+        state.scale = fitScale;
+        state.x = canvasW / 2;
+        state.y = canvasH / 2;
+        state.rotation = 0;
+        
+        freeCropRel = null;
+        updateCropBox(); 
+        
+        document.getElementById('zoomSlider').value = state.scale;
+    }
+
+    function updateCropBox() {
+        if (currentPreset === 'free' && freeCropRel) {
+            cropBox.x = state.x + freeCropRel.x * state.scale;
+            cropBox.y = state.y + freeCropRel.y * state.scale;
+            cropBox.w = freeCropRel.w * state.scale;
+            cropBox.h = freeCropRel.h * state.scale;
+            return;
+        }
+
+        const margin = 30; 
+        const maxW = canvasW - (margin * 2);
+        const maxH = canvasH - (margin * 2);
+        
+        let boxW, boxH;
+
+        if (currentPreset === 'free') {
+            boxW = maxW;
+            boxH = maxH; 
+        } else {
+            const ratio = PRESETS[currentPreset].ratio;
+            boxW = maxW;
+            boxH = boxW / ratio;
+            if (boxH > maxH) { boxH = maxH; boxW = boxH * ratio; }
+        }
+        
+        cropBox = { w: boxW, h: boxH, x: (canvasW - boxW) / 2, y: (canvasH - boxH) / 2 };
+        
+        if (currentPreset === 'free') recordFreeCropRel();
+    }
+    
+    function recordFreeCropRel() {
+        freeCropRel = {
+            x: (cropBox.x - state.x) / state.scale,
+            y: (cropBox.y - state.y) / state.scale,
+            w: cropBox.w / state.scale,
+            h: cropBox.h / state.scale
+        };
+    }
+
+    function setPreset(type, btn) {
+        currentPreset = type;
+        document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        freeCropRel = null;
+        updateCropBox();
+        draw();
+    }
+
+    // --- Main Loop ---
+    function draw() {
+        if (!isPdfLoaded) return;
+        
+        displayCtx.clearRect(0, 0, canvasW, canvasH);
+        displayCtx.fillStyle = '#1e293b';
+        displayCtx.fillRect(0, 0, canvasW, canvasH);
+        
+        displayCtx.save();
+        displayCtx.translate(state.x, state.y);
+        displayCtx.rotate(state.rotation * Math.PI / 180);
+        displayCtx.scale(state.scale, state.scale);
+        
+        // White Background for PDF
+        displayCtx.fillStyle = '#ffffff';
+        displayCtx.fillRect(-pdfRenderCanvas.width / 2, -pdfRenderCanvas.height / 2, pdfRenderCanvas.width, pdfRenderCanvas.height);
+        
+        displayCtx.imageSmoothingEnabled = true;
+        displayCtx.imageSmoothingQuality = 'high';
+        displayCtx.drawImage(pdfRenderCanvas, -pdfRenderCanvas.width / 2, -pdfRenderCanvas.height / 2);
+        displayCtx.restore();
+
+        // Overlay
+        displayCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        displayCtx.beginPath();
+        displayCtx.rect(0, 0, canvasW, canvasH);
+        displayCtx.moveTo(cropBox.x, cropBox.y);
+        displayCtx.lineTo(cropBox.x + cropBox.w, cropBox.y);
+        displayCtx.lineTo(cropBox.x + cropBox.w, cropBox.y + cropBox.h);
+        displayCtx.lineTo(cropBox.x, cropBox.y + cropBox.h);
+        displayCtx.lineTo(cropBox.x, cropBox.y);
+        displayCtx.closePath();
+        displayCtx.fill("evenodd");
+
+        // Border
+        displayCtx.strokeStyle = '#ffffff';
+        displayCtx.lineWidth = 2;
+        displayCtx.strokeRect(cropBox.x, cropBox.y, cropBox.w, cropBox.h);
+
+        // Draw Handles if Free mode
+        if (currentPreset === 'free') {
+            const r = 8;
+            displayCtx.fillStyle = '#2563eb';
+            displayCtx.strokeStyle = '#ffffff';
+            displayCtx.lineWidth = 2;
+            
+            const coords = [
+                {x: cropBox.x, y: cropBox.y}, 
+                {x: cropBox.x + cropBox.w, y: cropBox.y}, 
+                {x: cropBox.x, y: cropBox.y + cropBox.h}, 
+                {x: cropBox.x + cropBox.w, y: cropBox.y + cropBox.h} 
+            ];
+            
+            coords.forEach(c => {
+                displayCtx.beginPath();
+                displayCtx.arc(c.x, c.y, r, 0, Math.PI*2);
+                displayCtx.fill();
+                displayCtx.stroke();
+            });
+        }
+    }
+
+    // --- Interaction ---
+    displayCanvas.addEventListener('mousedown', e => startInput(e.clientX, e.clientY));
+    displayCanvas.addEventListener('touchstart', e => { if(e.touches.length===1) startInput(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
+    
+    window.addEventListener('mousemove', e => moveInput(e.clientX, e.clientY));
+    displayCanvas.addEventListener('touchmove', e => { e.preventDefault(); if(e.touches.length===1) moveInput(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
+    
+    window.addEventListener('mouseup', endInput);
+    displayCanvas.addEventListener('touchend', endInput);
+
+    function startInput(clientX, clientY) {
+        if(!isPdfLoaded) return;
+        const rect = displayCanvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        
+        activeHandle = null;
+        isDragging = false;
+
+        if (currentPreset === 'free') {
+            const touchT = 30; 
+            const cx = cropBox.x, cy = cropBox.y, cw = cropBox.w, ch = cropBox.h;
+            
+            if (Math.hypot(x - cx, y - cy) < touchT) activeHandle = 'tl';
+            else if (Math.hypot(x - (cx + cw), y - cy) < touchT) activeHandle = 'tr';
+            else if (Math.hypot(x - cx, y - (cy + ch)) < touchT) activeHandle = 'bl';
+            else if (Math.hypot(x - (cx + cw), y - (cy + ch)) < touchT) activeHandle = 'br';
+        }
+
+        if (activeHandle) {
+            // Resize
+        } else {
+            // Pan
+            state.lastX = x;
+            state.lastY = y;
+            isDragging = true;
+        }
+    }
+
+    function moveInput(clientX, clientY) {
+        const rect = displayCanvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        if (activeHandle) {
+            const minSize = 50;
+            const margin = 5;
+            let nx = cropBox.x;
+            let ny = cropBox.y;
+            let nw = cropBox.w;
+            let nh = cropBox.h;
+
+            if (activeHandle.includes('l')) { 
+                const diff = x - nx;
+                if (nw - diff > minSize && x > margin) { nx = x; nw -= diff; }
+            }
+            if (activeHandle.includes('r')) { 
+                const targetW = x - nx;
+                if (targetW > minSize && x < canvasW - margin) { nw = targetW; }
+            }
+            if (activeHandle.includes('t')) { 
+                const diff = y - ny;
+                if (nh - diff > minSize && y > margin) { ny = y; nh -= diff; }
+            }
+            if (activeHandle.includes('b')) { 
+                const targetH = y - ny;
+                if (targetH > minSize && y < canvasH - margin) { nh = targetH; }
+            }
+            
+            cropBox = {x:nx, y:ny, w:nw, h:nh};
+            recordFreeCropRel(); 
+            draw();
+
+        } else if (isDragging) {
+            state.x += x - state.lastX;
+            state.y += y - state.lastY;
+            state.lastX = x; 
+            state.lastY = y;
+            
+            if (currentPreset === 'free') {
+                updateCropBox(); 
+            } else {
+                // If standard mode, check simple center snap
+                const cx = canvasW/2, cy = canvasH/2, th = 10;
+                if(Math.abs(state.x - cx) < th) state.x = cx;
+                if(Math.abs(state.y - cy) < th) state.y = cy;
+            }
+            
+            draw();
+        }
+    }
+
+    function endInput() {
+        isDragging = false;
+        activeHandle = null;
+        alignMsg.style.opacity = 0;
+    }
+
+    // --- Improved Zoom with Auto-Center Edge Behavior ---
+    function manualZoom(val) {
+        state.scale = parseFloat(val);
+        constsrainAndCenter(); // Apply constraints logic
+        if (currentPreset === 'free') updateCropBox(); 
+        draw();
+    }
+    
+    function constsrainAndCenter() {
+        // Calculate the visual dimensions of the rotated PDF
+        const isRotated = (state.rotation / 90) % 2 !== 0;
+        const displayW = (isRotated ? pdfRenderCanvas.height : pdfRenderCanvas.width) * state.scale;
+        const displayH = (isRotated ? pdfRenderCanvas.width : pdfRenderCanvas.height) * state.scale;
+
+        // 1. Auto Center if Smaller than Canvas
+        if (displayW <= canvasW) state.x = canvasW / 2;
+        if (displayH <= canvasH) state.y = canvasH / 2;
+
+        // 2. Edge Constraints (Don't let image fly off screen)
+        // Only apply if image is larger than canvas
+        /*
+        if (displayW > canvasW) {
+            const edgeX = displayW / 2;
+            if (state.x - edgeX > canvasW - 20) state.x = canvasW - 20 + edgeX; // Left edge bound
+            if (state.x + edgeX < 20) state.x = 20 - edgeX; // Right edge bound
+        }
+        if (displayH > canvasH) {
+            const edgeY = displayH / 2;
+            if (state.y - edgeY > canvasH - 20) state.y = canvasH - 20 + edgeY;
+            if (state.y + edgeY < 20) state.y = 20 - edgeY;
+        }
+        */
+        // Note: I commented out strict edge constraints as it can conflict with "Free Mode" moving behavior 
+        // if not carefully handled. The "Snap to Center if Smaller" is usually sufficient for good UX.
+    }
+    
+    function adjustZoom(delta) {
+        const slider = document.getElementById('zoomSlider');
+        let newVal = parseFloat(slider.value) + delta;
+        if(newVal < 0.1) newVal = 0.1;
+        if(newVal > 3.0) newVal = 3.0;
+        slider.value = newVal;
+        manualZoom(newVal);
+    }
+    
+    function rotateView() {
+        state.rotation = (state.rotation + 90) % 360;
+        // Re-center on rotate for better UX
+        state.x = canvasW / 2;
+        state.y = canvasH / 2;
+        if(currentPreset === 'free') updateCropBox();
+        draw();
+    }
+
+    function processCrop() {
+        if(!isPdfLoaded) return;
+        document.getElementById('loadingText').innerText = "Processing...";
+        document.getElementById('loadingIndicator').style.display = 'block';
+        document.getElementById('resultContent').style.display = 'none';
+        document.getElementById('resultModal').classList.add('active');
+        setTimeout(() => { generateHighQualityCrop(); }, 100);
+    }
+
+    function generateHighQualityCrop() {
+        const sourceCropW = cropBox.w / state.scale;
+        const sourceCropH = cropBox.h / state.scale;
+        
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = sourceCropW;
+        finalCanvas.height = sourceCropH;
+        const ctx = finalCanvas.getContext('2d');
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+        
+        ctx.save();
+        ctx.translate(sourceCropW / 2, sourceCropH / 2);
+        ctx.rotate(state.rotation * Math.PI / 180);
+        
+        const cropCX = cropBox.x + cropBox.w/2;
+        const cropCY = cropBox.y + cropBox.h/2;
+        const diffX = state.x - cropCX;
+        const diffY = state.y - cropCY;
+        
+        ctx.translate(diffX / state.scale, diffY / state.scale);
+        
+        // Output White Background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-pdfRenderCanvas.width / 2, -pdfRenderCanvas.height / 2, pdfRenderCanvas.width, pdfRenderCanvas.height);
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(pdfRenderCanvas, -pdfRenderCanvas.width / 2, -pdfRenderCanvas.height / 2);
+        
+        ctx.restore();
+        
+        const url = finalCanvas.toDataURL('image/jpeg', 0.95);
+        displayResult(url);
+    }
+
+    function displayResult(url) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        document.getElementById('resultContent').style.display = 'block';
+        document.getElementById('finalResult').src = url;
+        window.finalBlobUrl = url;
+    }
+
+    function downloadResult() {
+        if(window.finalBlobUrl) saveAs(window.finalBlobUrl, 'pdf_crop_page_' + pageNum + '.jpg');
+    }
+
+    function closeModal() {
+        document.getElementById('resultModal').classList.remove('active');
+    }
+
+</script>
+<script src="tool-ads.js"></script>
+</body>
+</html>
