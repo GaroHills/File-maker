@@ -1,5 +1,5 @@
 // --- CONFIGURATION ---
-const APP_VERSION = 'v1.5.3'; 
+const APP_VERSION = 'v1.5.2'; 
 const CACHE_NAME = `pro-file-tools-${APP_VERSION}`;
 
 // --- INSTALL EVENT (Fault-Tolerant) ---
