@@ -53,7 +53,7 @@ var toolMetadata = {
     },
     "id_card_cropper": {
         category: "Id Maker Tools",
-        tags: ["Super fast", "2026", "NEW"],
-        color: "#00a86b"
+        tags: ["Super fast", "PRO", "NEW"],
+        color: "#00A2FF"
     },
 };
