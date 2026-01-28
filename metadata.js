@@ -56,4 +56,9 @@ var toolMetadata = {
         tags: ["Super fast", "PRO", "NEW"],
         color: "#00A2FF"
     },
+        "pdf_cropper": {
+        category: "PDF tools",
+        tags: ["Super fast", "2026", "update"],
+        color: "#E0002B"
+    },
 };
