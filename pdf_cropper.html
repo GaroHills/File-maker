@@ -198,6 +198,15 @@
         .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+        /* Password Hint */
+        .password-hint {
+            background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px;
+            padding: 12px; margin-bottom: 15px; text-align: left;
+        }
+        .hint-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+        .hint-list { margin: 0; padding-left: 15px; color: #64748b; font-size: 11px; line-height: 1.5; }
+        .hint-list li { margin-bottom: 2px; }
+
         /* Animations */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
@@ -313,6 +322,15 @@
         <h3 style="margin:0 0 5px 0; font-size:16px;">Encrypted PDF</h3>
         <p style="font-size:13px; color:#64748b; margin-top:0; margin-bottom:15px;">Please enter the password to open this file.</p>
         
+        <!-- Password Hints -->
+        <div class="password-hint">
+            <div class="hint-title">Common Passwords:</div>
+            <ul class="hint-list">
+                <li><strong>Aadhar:</strong> First 4 letters of Name (CAPS) + Year (e.g. ANIS1999)</li>
+                <li><strong>PAN:</strong> Date of Birth (DDMMYYYY)</li>
+            </ul>
+        </div>
+
         <input type="password" id="pdfPassword" class="password-input" placeholder="Enter Password">
         <p id="passwordError" style="color:#ef4444; font-size:12px; display:none; margin-top:8px; font-weight:600;">Incorrect password. Try again.</p>
         
@@ -504,7 +522,6 @@
 
     async function renderPage(num) {
         pdfPageProxy = await pdfDoc.getPage(num);
-        // Preview render at 2x for good speed/quality balance
         const viewport = pdfPageProxy.getViewport({ scale: 2.0 });
         
         pdfRenderCanvas.width = viewport.width;
