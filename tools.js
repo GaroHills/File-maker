@@ -50,7 +50,7 @@ var manualToolList = [
     },
     {
         "name": "EARN_MONEY",
-        "url": "earn_money.html",
+        "url": "https://s.wingoco.xyz?c=24492784",
     }
     // When you paste a new tool here and save the file on your server,
     // it will appear on the dashboard automatically within 30 seconds!
