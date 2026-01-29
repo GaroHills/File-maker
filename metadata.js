@@ -70,5 +70,5 @@ var toolMetadata = {
         category: "Free Money",
         tags: ["fast earn", "easy", "Unlimited"],
         color: "#00a86b"
-    },
+    }
 };
