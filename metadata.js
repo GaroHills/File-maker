@@ -66,9 +66,5 @@ var toolMetadata = {
         tags: ["Super fast", "easy", "good"],
         color: "#00a86b"
     },
-    "earn_money": {
-        category: "Free Money",
-        tags: ["fast earn", "easy", "Unlimited"],
-        color: "#00a86b"
-    },
+
 };
