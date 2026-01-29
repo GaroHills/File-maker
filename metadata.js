@@ -53,10 +53,10 @@ var toolMetadata = {
     },
     "id_card_cropper": {
         category: "Id Maker Tools",
-        tags: ["Super fast", "PRO", "NEW"],
-        color: "#00A2FF"
+        tags: ["Super fast", "2026", "NEW"],
+        color: "#00a86b"
     },
-        "pdf_cropper": {
+    "pdf_cropper": {
         category: "PDF tools",
         tags: ["Super fast", "2026", "update"],
         color: "#E0002B"
@@ -66,7 +66,7 @@ var toolMetadata = {
         tags: ["Super fast", "easy", "good"],
         color: "#00a86b"
     },
-        "earn_money": {
+    "earn_money": {
         category: "Free Money",
         tags: ["fast earn", "easy", "Unlimited"],
         color: "#00a86b"
