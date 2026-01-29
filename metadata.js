@@ -61,4 +61,9 @@ var toolMetadata = {
         tags: ["Super fast", "2026", "update"],
         color: "#E0002B"
     },
+    "pdf_editor_pro": {
+        category: "PDF tools",
+        tags: ["Super fast", "easy", "good"],
+        color: "#00a86b"
+    },
 };
