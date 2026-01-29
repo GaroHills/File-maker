@@ -446,4 +446,67 @@ const toolIcons = {
 
 </svg>`,
 
+        "earn_money": `<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="128"
+  height="128"
+  viewBox="0 0 128 128"
+  fill="none">
+
+  <!-- Background -->
+  <rect
+    x="8"
+    y="8"
+    width="112"
+    height="112"
+    rx="24"
+    fill="#16a34a"
+  />
+
+  <!-- Inner glow -->
+  <rect
+    x="14"
+    y="14"
+    width="100"
+    height="100"
+    rx="20"
+    fill="none"
+    stroke="#86efac"
+    stroke-width="2"
+  />
+
+  <!-- Coin -->
+  <circle
+    cx="64"
+    cy="52"
+    r="22"
+    fill="#facc15"
+    stroke="#854d0e"
+    stroke-width="4"
+  />
+
+  <!-- Currency symbol -->
+  <text
+    x="64"
+    y="60"
+    text-anchor="middle"
+    font-size="28"
+    font-weight="bold"
+    fill="#713f12">
+    ₹
+  </text>
+
+  <!-- Text: Ean Money -->
+  <text
+    x="64"
+    y="92"
+    text-anchor="middle"
+    font-size="14"
+    font-weight="bold"
+    fill="#ffffff">
+    EAN MONEY
+  </text>
+
+</svg>`,
+
 };
