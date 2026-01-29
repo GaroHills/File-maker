@@ -50,7 +50,7 @@ var manualToolList = [
     },
     {
         "name": "EARN_MONEY",
-        "url": "pdf_cropper.html",
+        "url": "earn_money.html",
     }
     // When you paste a new tool here and save the file on your server,
     // it will appear on the dashboard automatically within 30 seconds!
