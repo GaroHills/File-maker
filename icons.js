@@ -364,6 +364,86 @@ const toolIcons = {
   <path d="M92 108h-10M92 108v-10"
         stroke="#b71c1c" stroke-width="3" stroke-linecap="round"/>
 
-</svg>`,    
+</svg>`,
+
+    "pdf_editor_pro": `<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="128"
+  height="128"
+  viewBox="0 0 128 128"
+  fill="none">
+
+  <!-- Shadow filter for PRO badge -->
+  <defs>
+    <filter id="proGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#3b82f6" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- File base -->
+  <path
+    d="M24 8h52l20 20v84a8 8 0 0 1-8 8H24a8 8 0 0 1-8-8V16a8 8 0 0 1 8-8z"
+    fill="#DE191D"
+    stroke="#000000"
+    stroke-width="4"
+  />
+
+  <!-- Fold corner -->
+  <path
+    d="M76 8v20h20"
+    fill="#e5e7eb"
+    stroke="#1e293b"
+    stroke-width="4"
+  />
+
+  <!-- PDF label -->
+  <rect x="30" y="40" width="36" height="16" rx="4" fill="#ef4444"/>
+  <text x="48" y="52" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">
+    PDF
+  </text>
+
+  <!-- Text lines -->
+  <line x1="30" y1="70" x2="70" y2="70" stroke="#FFFFFF" stroke-width="4"/>
+  <line x1="30" y1="80" x2="62" y2="80" stroke="#FFFFFF" stroke-width="4"/>
+
+  <!-- Edit pencil -->
+  <path
+    d="M78 72l22-22a4 4 0 0 1 6 6L84 78l-8 2 2-8z"
+    fill="#facc15"
+    stroke="#1e293b"
+    stroke-width="3"
+  />
+
+  <!-- Pencil tip -->
+  <path
+    d="M100 50l6 6"
+    stroke="#1e293b"
+    stroke-width="3"
+  />
+
+  <!-- PRO badge -->
+  <g filter="url(#proGlow)">
+    <rect
+      x="66"
+      y="92"
+      width="44"
+      height="20"
+      rx="6"
+      fill="#2563eb"
+      stroke="#1e40af"
+      stroke-width="2"
+    />
+    <text
+      x="88"
+      y="106"
+      text-anchor="middle"
+      font-size="10"
+      font-weight="bold"
+      fill="#ffffff">
+      PRO
+    </text>
+  </g>
+
+</svg>`,
 
 };
